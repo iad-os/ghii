@@ -1,77 +1,87 @@
-import { values } from 'lodash'
-import Ghii, { ghii } from '../src/ghii'
+import Joi from 'joi';
+import { values } from 'lodash';
+import Ghii, { ghii } from '../src/ghii';
 
 describe('Ghii Config', () => {
   it('Ghii is instantiable', () => {
-    expect(Ghii).toBeDefined()
-  })
+    expect(Ghii).toBeDefined();
+  });
 
   describe('register', () => {
     it('load default (valid) options', async () => {
-      const target = ghii()
-      target.add('topicName', {
-        defaults: { test: true, value: 11, name: 'test' },
-        async validator(values) {
-          if (values.name == 'test' && values.test == true && values.value > 10) return
-          throw new Error('Validation Failed')
+      const target = ghii();
+      type FooType = { prop: string };
+      target.section<FooType>('foo', {
+        defaults: { prop: 'ciao' },
+        validator(joi) {
+          return joi.object<FooType>({
+            prop: joi.string().required(),
+          });
         },
-      })
-      target.add('two', {
-        defaults: { test: true, value: 0, name: 'test' },
-        async validator(values) {
-          if (values.name == 'test' && values.test == true && values.value < 10) return
-          throw new Error('Validation Failed')
-        },
-      })
+      });
+      const result = await target.load();
+      expect(result).toStrictEqual({ foo: { prop: 'ciao' } });
+    });
 
-      const result = await target.load()
-      expect({
-        topicName: { test: true, value: 11, name: 'test' },
-        two: { test: true, value: 0, name: 'test' },
-      }).toEqual(result)
-    })
-    it('load options from dummy loader', async () => {
-      const target = ghii()
-      target.add('a', {
-        defaults: { value: true },
-        validator: async (values) => {
-          if (!values.value) throw new Error('not valid')
+    it('loader (valid) options', async () => {
+      const target = ghii();
+      type FooType = { prop: string };
+      target.section<FooType>('foo', {
+        defaults: { prop: 'goodbye' },
+        validator(joi) {
+          return joi.object<FooType>({
+            prop: joi.string().required(),
+          });
         },
-      })
-      target.loader(async () => ({ a: { value: true } }))
-      const result = await target.load()
-      expect({
-        a: { value: true },
-      }).toEqual(result)
-    })
+      });
+      target.loader(async () => ({ foo: { prop: 'ciao' } }));
+      const result = await target.load();
+      expect(result).toStrictEqual({ foo: { prop: 'ciao' } });
+    });
 
-    it('throws if validation fail', async () => {
-      const target = ghii()
-      target.add('a', {
-        defaults: { value: true },
-        validator: async (values) => {
-          if (!values.value) throw new Error('not valid')
+    it('load default (invalid) options', () => {
+      const target = ghii();
+      type FooType = { prop: string };
+      target.section<FooType>('foo', {
+        defaults: { prop: 'goodbye' },
+        validator(joi) {
+          return joi.object<FooType>({
+            prop: joi.string().length(10).required(),
+          });
         },
-      })
-      target.add('b', {
-        defaults: { int: 1 },
-        validator: async (values) => {
-          if (values.int !== 1) throw new Error('not valid')
+      });
+
+      return expect(target.load()).rejects.toMatchObject([{ reason: { err: true, key: 'foo' }, status: 'rejected' }]);
+    });
+
+    it('load loader (invalid) options', () => {
+      const target = ghii();
+      type FooType = { prop: string };
+      target.section<FooType>('foo', {
+        defaults: { prop: 'goodbye' },
+        validator(joi) {
+          return joi.object<FooType>({
+            prop: joi.string().length(7).required(),
+          });
         },
-      })
-      target.add('c', {
-        defaults: { value: true },
-        validator: async (values) => {
-          if (values.value) throw new Error('not valid')
+      });
+      target.loader(async () => ({ foo: { prop: 'ciao' } }));
+      return expect(target.load()).rejects.toMatchObject([{ reason: { err: true, key: 'foo' }, status: 'rejected' }]);
+    });
+
+    it('load loader (invalid) options', () => {
+      const target = ghii();
+      type FooType = { prop: string };
+      target.section<FooType>('foo', {
+        // defaults: { prop: 'goodbye' },
+        validator(joi) {
+          return joi.object<FooType>({
+            prop: joi.string().length(3).required(),
+          });
         },
-      })
-      target.loader(async () => ({ a: { value: false }, b: { int: 10 } }))
-      try {
-        const result = await target.load()
-        fail()
-      } catch (errors) {
-        expect(errors).toHaveLength(3)
-      }
-    })
-  })
-})
+      });
+      target.loader(async () => ({ foo: { prop: 'ciao' } }));
+      return expect(target.load()).rejects.toMatchObject([{ reason: { err: true, key: 'foo' }, status: 'rejected' }]);
+    });
+  });
+});
