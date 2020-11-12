@@ -8,13 +8,22 @@ export interface Topic<T> {
 }
 
 export type Loader = () => Promise<{ [key: string]: unknown }>;
+type a = Record<string, string>;
+type Record<K extends keyof any, T> = {
+  [P in K]: T;
+};
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export function ghii<O extends { [P in keyof O]: O[P] }>() {
+  type ObjectKeys = keyof O;
+  type SnapshotType = { [key in ObjectKeys]: O[key] };
+  type SectionsType = { [key in ObjectKeys]?: Topic<O[key]> };
+  type ValidatorType = { [key in ObjectKeys]?: Joi.Schema };
 
-export function ghii() {
-  const sections: { [key: string]: Topic<any> } = {};
-  const validators: { [key in keyof typeof sections]: Joi.Schema } = {};
+  const sections: SectionsType = {};
+  const validators: ValidatorType = {};
   const loaders: Loader[] = [];
 
-  function section<T>(name: string, topic: Topic<T>): void {
+  function section<K extends ObjectKeys>(name: K, topic: Topic<O[K]>): void {
     if (!topic.required) topic.required = true;
     sections[name] = topic;
     validators[name] = topic.validator(Joi);
@@ -24,24 +33,29 @@ export function ghii() {
     loaders.push(loader);
   }
 
-  async function load() {
-    const defaults = reduce(
+  function prepareDefaults(sections: SectionsType): SnapshotType {
+    return reduce(
       sections,
-      (acc, value, key) => {
-        acc[key] = value.defaults as Topic<typeof value.defaults>;
+      (acc: any, value, key) => {
+        if (!value?.defaults) return acc;
+        acc[key] = value?.defaults;
         return acc;
       },
-      {} as { [key: string]: Topic<unknown> }
+      {} as SnapshotType
     );
+  }
 
-    const loaded = await Promise.all(loaders.map(loader => loader()));
+  function runLoaders(loaders: Loader[]) {
+    return Promise.all(loaders.map(loader => loader()));
+  }
 
-    const result = merge({}, defaults, ...loaded);
+  async function validate(validators: { [key in ObjectKeys]?: Joi.Schema }, result: any) {
     const validation = await Promise.allSettled(
       map(
         validators,
         (validator, key) =>
           new Promise((resolve, reject) => {
+            if (!validator) return resolve({ key, err: false });
             validator.validateAsync(result[key]).then(
               value => {
                 resolve({ key, err: false, value });
@@ -53,7 +67,16 @@ export function ghii() {
           })
       )
     );
-    const validationErrors = validation.filter(promise => promise.status === 'rejected');
+    return validation.filter(promise => promise.status === 'rejected');
+  }
+
+  async function takeSnapshot(): Promise<SnapshotType> {
+    const defaults = prepareDefaults(sections);
+
+    const loaded = await runLoaders(loaders);
+
+    const result: O = merge({}, defaults, ...loaded);
+    const validationErrors = await validate(validators, result);
     if (validationErrors.length) throw validationErrors;
     return result;
   }
@@ -61,7 +84,7 @@ export function ghii() {
   return {
     section,
     loader,
-    load,
+    takeSnapshot,
   };
 }
 

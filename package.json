@@ -81,6 +81,7 @@
     "@commitlint/cli": "^11.0.0",
     "@commitlint/config-conventional": "^11.0.0",
     "@types/jest": "^26.0.15",
+    "@types/js-yaml": "^3.12.5",
     "@types/lodash": "^4.14.165",
     "@types/node": "^14.14.6",
     "@typescript-eslint/eslint-plugin": "^4.6.1",
@@ -112,6 +113,7 @@
   },
   "dependencies": {
     "joi": "^17.3.0",
+    "js-yaml": "^3.14.0",
     "lodash": "^4.17.20"
   }
 }
