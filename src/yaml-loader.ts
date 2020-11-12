@@ -5,8 +5,8 @@ import { promisify } from 'util';
 import path from 'path';
 const stat = promisify(fs.stat);
 const readFile = promisify(fs.readFile);
+
 export default function yamlLoader(file: string): Loader {
-  console.log(path.join(__dirname, file));
   if (fs.existsSync(path.join(__dirname, file))) throw new Error(`${file} 404`);
   return async function yamlFileLoader() {
     const fstat = await stat(file);

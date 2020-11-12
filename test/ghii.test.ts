@@ -8,10 +8,11 @@ describe('Ghii Config', () => {
   describe('register', () => {
     it('load default (valid) options', async () => {
       type FooType = { prop: string };
-
+      type S3Type = { ciao: string };
       const target = ghii<{
         foo: FooType;
         foo2: FooType;
+        s3: S3Type;
       }>();
 
       target.section('foo', {
@@ -30,8 +31,18 @@ describe('Ghii Config', () => {
           });
         },
       });
+      target.section('s3', {
+        validator: joi => joi.object({ url: joi.string().required() }).unknown(),
+        defaults: { ciao: 'world' },
+      });
+
+      target.loader(async () => ({ s3: { url: 'ciao' } }));
       const result = await target.takeSnapshot();
-      expect(result).toStrictEqual({ foo: { prop: 'ciao' }, foo2: { prop: 'ciao' } });
+      expect(result).toStrictEqual({
+        foo: { prop: 'ciao' },
+        foo2: { prop: 'ciao' },
+        s3: { ciao: 'world', url: 'ciao' },
+      });
     });
 
     it('loader (valid) options', async () => {

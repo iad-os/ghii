@@ -8,10 +8,7 @@ export interface Topic<T> {
 }
 
 export type Loader = () => Promise<{ [key: string]: unknown }>;
-type a = Record<string, string>;
-type Record<K extends keyof any, T> = {
-  [P in K]: T;
-};
+
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function ghii<O extends { [P in keyof O]: O[P] }>() {
   type ObjectKeys = keyof O;
