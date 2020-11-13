@@ -4,16 +4,22 @@ import * as fs from 'fs';
 import { promisify } from 'util';
 import path from 'path';
 const stat = promisify(fs.stat);
+
 const readFile = promisify(fs.readFile);
 
 export default function yamlLoader(file: string): Loader {
-  if (fs.existsSync(path.join(__dirname, file))) throw new Error(`${file} 404`);
+  const sourcePath = path.join(__dirname, file);
+  if (!fs.existsSync(sourcePath)) throw new Error(`${file} 404`);
   return async function yamlFileLoader() {
-    const fstat = await stat(file);
-    if (fstat.isFile()) {
-      const yamlContent = await readFile(file, { encoding: 'utf8' });
-      return yaml.safeLoad(yamlContent) as { [key: string]: unknown };
+    try {
+      const fstat = await stat(sourcePath);
+      if (fstat.isFile()) {
+        const yamlContent = await readFile(sourcePath, { encoding: 'utf8' });
+        return yaml.safeLoad(yamlContent) as { [key: string]: unknown };
+      }
+      throw new Error(`Source ${sourcePath} is not a file`);
+    } catch (err) {
+      throw new Error(`FILE DELETED OR A DIRECTORY-> ${sourcePath} 404`);
     }
-    throw new Error(`FILE DELETED -> ${file} 404`);
   };
 }

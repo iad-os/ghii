@@ -55,12 +55,43 @@ describe('Ghii Config', () => {
             prop: joi.string().required(),
           });
         },
+        required: false,
       });
       target.loader(async () => ({ foo: { prop: 'ciao' } }));
       const result = await target.takeSnapshot();
       expect(result).toStrictEqual({ foo: { prop: 'ciao' } });
     });
 
+    it('loader without defaults (valid) options', async () => {
+      type FooType = { prop: string };
+      const target = ghii<{ foo: FooType }>();
+      target.section('foo', {
+        validator(joi) {
+          return joi.object<FooType>({
+            prop: joi.string().required(),
+          });
+        },
+        required: true,
+      });
+      target.loader(async () => ({ foo: { prop: 'ciao' } }));
+      const result = await target.takeSnapshot();
+      expect(result).toStrictEqual({ foo: { prop: 'ciao' } });
+    });
+
+    it('loader without defaults (valid) options', async () => {
+      type FooType = { prop: string };
+      const target = ghii<{ foo: FooType }>();
+      target.section('foo', {
+        validator(joi) {
+          return joi.object<FooType>({
+            prop: joi.string().required(),
+          });
+        },
+      });
+      target.loader(async () => ({ foo: { prop: 'ciao' } }));
+      const result = await target.takeSnapshot();
+      expect(result).toStrictEqual({ foo: { prop: 'ciao' } });
+    });
     it('load default (invalid) options', () => {
       type FooType = { prop: string };
       const target = ghii<{ foo: FooType }>();

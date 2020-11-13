@@ -21,7 +21,7 @@ export function ghii<O extends { [P in keyof O]: O[P] }>() {
   const loaders: Loader[] = [];
 
   function section<K extends ObjectKeys>(name: K, topic: Topic<O[K]>): void {
-    if (!topic.required) topic.required = true;
+    if (topic.required !== false) topic.required = true;
     sections[name] = topic;
     validators[name] = topic.validator(Joi);
   }
@@ -34,8 +34,10 @@ export function ghii<O extends { [P in keyof O]: O[P] }>() {
     return reduce(
       sections,
       (acc: any, value, key) => {
-        if (!value?.defaults) return acc;
-        acc[key] = value?.defaults;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        if (!value!.defaults) return acc;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        acc[key] = value!.defaults;
         return acc;
       },
       {} as SnapshotType
@@ -52,8 +54,8 @@ export function ghii<O extends { [P in keyof O]: O[P] }>() {
         validators,
         (validator, key) =>
           new Promise((resolve, reject) => {
-            if (!validator) return resolve({ key, err: false });
-            validator.validateAsync(result[key]).then(
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            validator!.validateAsync(result[key]).then(
               value => {
                 resolve({ key, err: false, value });
               },
