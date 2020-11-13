@@ -3,16 +3,23 @@
   "version": "0.0.1",
   "description": "",
   "keywords": [],
-  "main": "dist/ghii.umd.js",
-  "module": "dist/ghii.es5.js",
-  "typings": "dist/types/ghii.d.ts",
+  "main": "dist/ghii.js",
+  "module": "dist/ghii.js",
+  "types": "dist/types/ghii.d.ts",
+  "typesVersions": {
+    ">=4.0": {
+      "*": [
+        "ts3.1/*"
+      ]
+    }
+  },
   "files": [
     "dist"
   ],
   "author": "Daniele Fiungo <dfiungo@iad2.it>",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/iad-os/ghii.git"
   },
   "license": "MIT",
   "engines": {
@@ -21,7 +28,7 @@
   "scripts": {
     "lint": "tslint  --project tsconfig.json -t codeFrame 'src/**/*.ts' 'test/**/*.ts'",
     "prebuild": "rimraf dist",
-    "build": "tsc --module commonjs && rollup -c rollup.config.ts && typedoc --out docs --target es6 --theme minimal --mode file src",
+    "build": "tsc --module commonjs && typedoc --out docs --target es6 --theme minimal --mode file src",
     "start": "rollup -c rollup.config.ts -w",
     "test": "jest --coverage",
     "test:watch": "jest --coverage --watch",
@@ -107,7 +114,7 @@
     "shelljs": "^0.8.4",
     "ts-jest": "^26.4.3",
     "ts-node": "^9.0.0",
-    "type-fest": "^0.18.0",
+    "type-fest": "^0.18.1",
     "typedoc": "^0.19.2",
     "typescript": "^4.0.5"
   },
