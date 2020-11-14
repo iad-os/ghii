@@ -7,9 +7,9 @@ const stat = promisify(fs.stat);
 
 const readFile = promisify(fs.readFile);
 
-export default function yamlLoader(file: string): Loader {
-  const sourcePath = path.join(__dirname, file);
-  if (!fs.existsSync(sourcePath)) throw new Error(`${file} 404`);
+export default function yamlLoader(...filePathToken: string[]): Loader {
+  const sourcePath = path.join(...filePathToken);
+  if (!fs.existsSync(sourcePath)) throw new Error(`${sourcePath} 404`);
   return async function yamlFileLoader() {
     try {
       const fstat = await stat(sourcePath);

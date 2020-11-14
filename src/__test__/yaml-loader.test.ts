@@ -8,22 +8,22 @@ describe('Ghii Yaml Loader', () => {
 
   describe('to create a loader', () => {
     it('create a file loader from yaml file', async () => {
-      const yamlFileLoader = yamlLoader('../test/test.yaml');
+      const yamlFileLoader = yamlLoader(__dirname, 'test.yaml');
       expect(typeof yamlFileLoader).toBe('function');
     });
 
     it('attempt to read not existent file throw Error', async () => {
       expect(() => {
-        yamlLoader('../test/test_not_exist.yaml');
+        yamlLoader(__dirname, 'test_not_exist.yaml');
       }).toThrow();
     });
 
     it('attempt to read a folder throw Error', async () => {
-      expect(yamlLoader('../test')).rejects.toBeInstanceOf(Error);
+      expect(yamlLoader(__dirname)).rejects.toBeInstanceOf(Error);
     });
 
     it('create a file loader from yaml file', async () => {
-      const content = await yamlLoader('../test/test.yaml')();
+      const content = await yamlLoader(__dirname, 'test.yaml')();
       expect(content).toStrictEqual({
         foo: {
           ciao: 'mondo',
@@ -32,11 +32,11 @@ describe('Ghii Yaml Loader', () => {
     });
 
     it('create a file loader from yaml file removed after init', async () => {
-      const src = path.join(__dirname, '../test/test.yaml');
-      const copy = path.join(__dirname, '../test/test-temp-copy.yaml');
+      const src = path.join(__dirname, '../__test__/test.yaml');
+      const copy = path.join(__dirname, '../__test__/test-temp-copy.yaml');
       if (fs.existsSync(copy)) fs.rmSync(copy);
       fs.copyFileSync(src, copy);
-      const fileLoader = await yamlLoader('../test/test-temp-copy.yaml');
+      const fileLoader = await yamlLoader(__dirname, 'test-temp-copy.yaml');
       fs.rmSync(copy);
       expect(fileLoader()).rejects.toBeInstanceOf(Error);
     });
