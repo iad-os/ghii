@@ -3,34 +3,47 @@ import { map, merge, reduce } from 'lodash';
 import Joi from 'joi';
 export interface Topic<T> {
   required?: boolean;
-  defaults?: PartialDeep<T>;
+  defaults?: PartialDeep<T> | T;
   validator: (joi: typeof Joi) => Joi.Schema;
 }
 
 export type Loader = () => Promise<{ [key: string]: unknown }>;
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export function ghii<O extends { [P in keyof O]: O[P] }>() {
-  type ObjectKeys = keyof O;
-  type SnapshotType = { [key in ObjectKeys]: O[key] };
-  type SectionsType = { [key in ObjectKeys]?: Topic<O[key]> };
-  type ValidatorType = { [key in ObjectKeys]?: Joi.Schema };
+type GhiiInstance<O extends { [P in keyof O]: O[P] }> = {
+  section: <K extends keyof O>(name: K, topic: Topic<O[K]>) => GhiiInstance<O>;
+  loader: (loader: Loader) => GhiiInstance<O>;
+  takeSnapshot: () => Promise<{ [key in keyof O]: O[key] }>;
+};
 
-  const sections: SectionsType = {};
-  const validators: ValidatorType = {};
+type SnapshotType<O extends { [P in keyof O]: O[P] }> = { [P in keyof O]: O[P] };
+type SectionsType<O extends { [P in keyof O]: O[P] }> = { [key in keyof O]?: Topic<O[key]> };
+type ValidatorType<O extends { [P in keyof O]: O[P] }> = { [key in keyof O]?: Joi.Schema };
+
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
+  type ObjectKeys = keyof O;
+
+  const sections: SectionsType<O> = {};
+  const validators: ValidatorType<O> = {};
   const loaders: Loader[] = [];
 
-  function section<K extends ObjectKeys>(name: K, topic: Topic<O[K]>): void {
+  function section<K extends ObjectKeys>(
+    this: ReturnType<typeof ghii>,
+    name: K,
+    topic: Topic<O[K]>
+  ): ReturnType<typeof ghii> {
     if (topic.required !== false) topic.required = true;
     sections[name] = topic;
     validators[name] = topic.validator(Joi);
+    return this;
   }
 
-  function loader(loader: Loader) {
+  function loader(this: ReturnType<typeof ghii>, loader: Loader) {
     loaders.push(loader);
+    return this;
   }
 
-  function prepareDefaults(sections: SectionsType): SnapshotType {
+  function prepareDefaults(sections: SectionsType<O>): SnapshotType<O> {
     return reduce(
       sections,
       (acc: any, value, key) => {
@@ -40,7 +53,7 @@ export function ghii<O extends { [P in keyof O]: O[P] }>() {
         acc[key] = value!.defaults;
         return acc;
       },
-      {} as SnapshotType
+      {} as SnapshotType<O>
     );
   }
 
@@ -69,7 +82,7 @@ export function ghii<O extends { [P in keyof O]: O[P] }>() {
     return validation.filter(promise => promise.status === 'rejected');
   }
 
-  async function takeSnapshot(): Promise<SnapshotType> {
+  async function takeSnapshot(): Promise<SnapshotType<O>> {
     const defaults = prepareDefaults(sections);
 
     const loaded = await runLoaders(loaders);

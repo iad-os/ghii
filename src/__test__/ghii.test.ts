@@ -15,28 +15,28 @@ describe('Ghii Config', () => {
         s3: S3Type;
       }>();
 
-      target.section('foo', {
-        defaults: { prop: 'ciao' },
-        validator(joi) {
-          return joi.object<FooType>({
-            prop: joi.string().required(),
-          });
-        },
-      });
-      target.section('foo2', {
-        defaults: { prop: 'ciao' },
-        validator(joi) {
-          return joi.object<FooType>({
-            prop: joi.string().required(),
-          });
-        },
-      });
-      target.section('s3', {
-        validator: joi => joi.object({ url: joi.string().required() }).unknown(),
-        defaults: { ciao: 'world' },
-      });
-
-      target.loader(async () => ({ s3: { url: 'ciao' } }));
+      target
+        .section('foo', {
+          defaults: { prop: 'ciao' },
+          validator(joi) {
+            return joi.object<FooType>({
+              prop: joi.string().required(),
+            });
+          },
+        })
+        .section('foo2', {
+          defaults: { prop: 'ciao' },
+          validator(joi) {
+            return joi.object<FooType>({
+              prop: joi.string().required(),
+            });
+          },
+        })
+        .section('s3', {
+          validator: joi => joi.object({ url: joi.string().required() }).unknown(),
+          defaults: { ciao: 'world' },
+        })
+        .loader(async () => ({ s3: { url: 'ciao' } }));
       const result = await target.takeSnapshot();
       expect(result).toStrictEqual({
         foo: { prop: 'ciao' },
@@ -60,6 +60,21 @@ describe('Ghii Config', () => {
       target.loader(async () => ({ foo: { prop: 'ciao' } }));
       const result = await target.takeSnapshot();
       expect(result).toStrictEqual({ foo: { prop: 'ciao' } });
+    });
+
+    it('simple property (valid) options', async () => {
+      type FooType = 'a' | 'b';
+      const target = ghii<{ foo: FooType }>();
+      target.section('foo', {
+        defaults: 'a',
+        validator(joi) {
+          return joi.string().allow('a', 'b');
+        },
+        required: false,
+      });
+      target.loader(async () => ({ foo: 'b' }));
+      const result = await target.takeSnapshot();
+      expect(result).toStrictEqual({ foo: 'b' });
     });
 
     it('loader without defaults (valid) options', async () => {
