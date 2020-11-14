@@ -1,4 +1,4 @@
-import yamlLoader from '../src/yaml-loader';
+import yamlLoader from '../yaml-loader';
 import * as fs from 'fs';
 import path from 'path';
 describe('Ghii Yaml Loader', () => {

@@ -1,4 +1,4 @@
-import Ghii, { ghii } from '../src/ghii';
+import Ghii, { ghii } from '../ghii';
 
 describe('Ghii Config', () => {
   it('Ghii is instantiable', () => {

@@ -87,4 +87,4 @@ export function ghii<O extends { [P in keyof O]: O[P] }>() {
   };
 }
 
-export default ghii();
+export default ghii;

@@ -1,10 +1,19 @@
 {
   "name": "ghii",
   "version": "0.1.1",
-  "description": "",
-  "keywords": [],
-  "main": "dist/ghii.js",
-  "module": "dist/ghii.js",
+  "description": "A Funny configuration manager ",
+  "maintainers": [
+    {
+      "name": "Daniele Fiungo",
+      "email": "daniele.fiungo@iad2.it"
+    }
+  ],
+  "keywords": [
+    "node",
+    "config"
+  ],
+  "main": "dist/lib/ghii.js",
+  "module": "dist/lib/ghii.js",
   "types": "dist/types/ghii.d.ts",
   "typesVersions": {
     ">=4.0": {
@@ -16,14 +25,14 @@
   "files": [
     "dist"
   ],
-  "author": "Daniele Fiungo <dfiungo@iad2.it>",
+  "author": "Daniele Fiungo <daniele.fiungo@iad2.it>",
   "repository": {
     "type": "git",
     "url": "https://github.com/iad-os/ghii.git"
   },
   "license": "MIT",
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=10.0.0"
   },
   "scripts": {
     "lint": "tslint  --project tsconfig.json -t codeFrame 'src/**/*.ts' 'test/**/*.ts'",
@@ -33,23 +42,7 @@
     "test": "jest --coverage",
     "test:watch": "jest --coverage --watch",
     "test:prod": "npm run lint && npm run test -- --no-cache",
-    "deploy-docs": "ts-node tools/gh-pages-publish",
-    "commit": "git-cz",
-    "semantic-release": "semantic-release",
-    "semantic-release-prepare": "ts-node tools/semantic-release-prepare",
-    "precommit": "lint-staged",
-    "travis-deploy-once": "travis-deploy-once"
-  },
-  "lint-staged": {
-    "{src,test}/**/*.ts": [
-      "prettier --write",
-      "git add"
-    ]
-  },
-  "config": {
-    "commitizen": {
-      "path": "node_modules/cz-conventional-changelog"
-    }
+    "deploy-docs": "ts-node tools/gh-pages-publish"
   },
   "jest": {
     "transform": {
@@ -77,39 +70,22 @@
       "src/*.{js,ts}"
     ]
   },
-  "commitlint": {
-    "extends": [
-      "@commitlint/config-conventional"
-    ]
-  },
   "devDependencies": {
-    "@commitlint/cli": "^11.0.0",
-    "@commitlint/config-conventional": "^11.0.0",
     "@types/jest": "^26.0.15",
     "@types/js-yaml": "^3.12.5",
     "@types/lodash": "^4.14.165",
     "@types/node": "^14.14.6",
     "@typescript-eslint/eslint-plugin": "^4.6.1",
     "@typescript-eslint/parser": "^4.6.1",
-    "colors": "^1.4.0",
-    "commitizen": "^4.2.2",
     "coveralls": "^3.1.0",
     "cross-env": "^7.0.2",
-    "cz-conventional-changelog": "^3.3.0",
     "eslint": "^7.13.0",
     "eslint-config-prettier": "^6.15.0",
     "eslint-plugin-prettier": "^3.1.4",
-    "husky": "^4.3.0",
     "jest": "^26.6.3",
     "jest-config": "^26.6.3",
-    "lint-staged": "^10.5.1",
-    "lodash.camelcase": "^4.3.0",
     "prettier": "^2.1.2",
-    "prompt": "^1.0.0",
-    "replace-in-file": "^6.1.0",
     "rimraf": "^3.0.2",
-    "rollup": "^2.33.1",
-    "shelljs": "^0.8.4",
     "ts-jest": "^26.4.3",
     "ts-node": "^9.0.0",
     "type-fest": "^0.18.1",
