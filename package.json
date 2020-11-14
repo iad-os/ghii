@@ -8,24 +8,16 @@
       "email": "daniele.fiungo@iad2.it"
     }
   ],
+  "author": "Daniele Fiungo <daniele.fiungo@iad2.it>",
   "keywords": [
     "node",
     "config"
   ],
   "main": "dist/lib/ghii.js",
-  "module": "dist/lib/ghii.js",
   "types": "dist/types/ghii.d.ts",
-  "typesVersions": {
-    ">=4.0": {
-      "*": [
-        "ts3.1/*"
-      ]
-    }
-  },
   "files": [
     "dist"
   ],
-  "author": "Daniele Fiungo <daniele.fiungo@iad2.it>",
   "repository": {
     "type": "git",
     "url": "https://github.com/iad-os/ghii.git"
@@ -56,7 +48,7 @@
     ],
     "coveragePathIgnorePatterns": [
       "/node_modules/",
-      "/test/"
+      "**/__test__/"
     ],
     "coverageThreshold": {
       "global": {
