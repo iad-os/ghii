@@ -9,15 +9,15 @@ export interface Topic<T> {
 
 export type Loader = () => Promise<{ [key: string]: unknown }>;
 
-type GhiiInstance<O extends { [P in keyof O]: O[P] }> = {
+export type GhiiInstance<O extends { [P in keyof O]: O[P] }> = {
   section: <K extends keyof O>(name: K, topic: Topic<O[K]>) => GhiiInstance<O>;
   loader: (loader: Loader) => GhiiInstance<O>;
   takeSnapshot: () => Promise<{ [key in keyof O]: O[key] }>;
 };
 
-type SnapshotType<O extends { [P in keyof O]: O[P] }> = { [P in keyof O]: O[P] };
-type SectionsType<O extends { [P in keyof O]: O[P] }> = { [key in keyof O]?: Topic<O[key]> };
-type ValidatorType<O extends { [P in keyof O]: O[P] }> = { [key in keyof O]?: Joi.Schema };
+export type SnapshotType<O extends { [P in keyof O]: O[P] }> = { [P in keyof O]: O[P] };
+export type SectionsType<O extends { [P in keyof O]: O[P] }> = { [key in keyof O]?: Topic<O[key]> };
+export type ValidatorType<O extends { [P in keyof O]: O[P] }> = { [key in keyof O]?: Joi.Schema };
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
