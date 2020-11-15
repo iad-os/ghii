@@ -23,8 +23,12 @@
     "url": "https://github.com/iad-os/ghii.git"
   },
   "license": "MIT",
+  "private": "false",
   "engines": {
     "node": ">=10.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "lint": "tslint  --project tsconfig.json -t codeFrame 'src/**/*.ts' 'test/**/*.ts'",
