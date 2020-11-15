@@ -23,7 +23,6 @@
     "url": "https://github.com/iad-os/ghii.git"
   },
   "license": "MIT",
-  "private": "false",
   "engines": {
     "node": ">=10.0.0"
   },

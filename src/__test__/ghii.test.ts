@@ -5,7 +5,7 @@ describe('Ghii Config', () => {
     expect(Ghii).toBeDefined();
   });
 
-  describe('register', () => {
+  describe('base configs', () => {
     it('load default (valid) options', async () => {
       type FooType = { prop: string };
       type S3Type = { ciao: string };
@@ -156,6 +156,68 @@ describe('Ghii Config', () => {
       return expect(target.takeSnapshot()).rejects.toMatchObject([
         { reason: { err: true, key: 'foo' }, status: 'rejected' },
       ]);
+    });
+  });
+
+  describe('history and version', () => {
+    it('have empty history and latestVersion if no snapshot is taken', () => {
+      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
+        validator: joi => joi.string(),
+      });
+
+      expect(target.history()).toStrictEqual([]);
+      expect(target.latestVersion()).toBeUndefined();
+      expect(target.snapshot()).toBeUndefined();
+    });
+
+    it('have history and latestVersion if  snapshot is taken', () => {
+      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
+        validator: joi => joi.string(),
+      });
+      target.snapshot({ a: { test: 'string' } });
+      expect(target.history()).toHaveLength(1);
+      expect(target.latestVersion()).toBeDefined();
+      expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
+    });
+    it('await snapshot', async () => {
+      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
+        validator: joi => joi.string(),
+      });
+      setTimeout(() => {
+        {
+          target.snapshot({ a: { test: 'string' } });
+        }
+      }, 100);
+      await target.waitForFirstSnapshot('./__test__/fakeModule');
+
+      expect(target.history()).toHaveLength(1);
+      expect(target.latestVersion()).toBeDefined();
+      expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
+    });
+
+    it('await when a snapshot is available', async () => {
+      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
+        validator: joi => joi.string(),
+      });
+      target.snapshot({ a: { test: 'string' } });
+      await target.waitForFirstSnapshot('./__test__/fakeModule');
+
+      expect(target.history()).toHaveLength(1);
+      expect(target.latestVersion()).toBeDefined();
+      expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
+    });
+
+    it('await when a snapshot is available', async () => {
+      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
+        validator: joi => joi.string(),
+      });
+      target.snapshot({ a: { test: 'string' } });
+      target.snapshot({ a: { test: 'string' } });
+      await target.waitForFirstSnapshot('./__test__/fakeModule');
+
+      expect(target.history()).toHaveLength(2);
+      expect(target.latestVersion()).toBeDefined();
+      expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
     });
   });
 });
