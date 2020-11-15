@@ -1,6 +1,6 @@
 {
-  "name": "ghii",
-  "version": "0.2.4",
+  "name": "@ghii/ghii",
+  "version": "0.0.0",
   "description": "A Funny configuration manager ",
   "maintainers": [
     {
