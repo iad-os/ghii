@@ -12,8 +12,8 @@ export interface Topic<T> {
 export type Loader = () => Promise<{ [key: string]: unknown }>;
 
 export type GhiiInstance<O extends { [P in keyof O]: O[P] }> = {
-  section: <K extends keyof O>(this: ReturnType<typeof ghii>, name: K, topic: Topic<O[K]>) => GhiiInstance<O>;
-  loader: (this: ReturnType<typeof ghii>, loader: Loader) => GhiiInstance<O>;
+  section: <K extends keyof O>(this: GhiiInstance<O>, name: K, topic: Topic<O[K]>) => GhiiInstance<O>;
+  loader: (this: GhiiInstance<O>, loader: Loader) => GhiiInstance<O>;
   takeSnapshot: () => Promise<{ [key in keyof O]: O[key] }>;
   history: () => SnapshotVersion<O>[];
   snapshot: (newSnapshot?: Snapshot<O>) => O | undefined;
@@ -43,18 +43,14 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
   const versions: SnapshotVersion<O>[] = [];
 
   const events = (new EventEmitter() as unknown) as GhiiEmitter<O>;
-  function section<K extends ObjectKeys>(
-    this: ReturnType<typeof ghii>,
-    name: K,
-    topic: Topic<O[K]>
-  ): ReturnType<typeof ghii> {
+  function section<K extends ObjectKeys>(this: GhiiInstance<O>, name: K, topic: Topic<O[K]>): ReturnType<typeof ghii> {
     if (topic.required !== false) topic.required = true;
     sections[name] = topic;
     validators[name] = topic.validator(Joi);
     return this;
   }
 
-  function loader(this: ReturnType<typeof ghii>, loader: Loader) {
+  function loader(this: GhiiInstance<O>, loader: Loader) {
     loaders.push(loader);
     return this;
   }
