@@ -16,7 +16,7 @@ export type GhiiInstance<O extends { [P in keyof O]: O[P] }> = {
   loader: (this: GhiiInstance<O>, loader: Loader) => GhiiInstance<O>;
   takeSnapshot: () => Promise<{ [key in keyof O]: O[key] }>;
   history: () => SnapshotVersion<O>[];
-  snapshot: (newSnapshot?: Snapshot<O>) => O | undefined;
+  snapshot: (newSnapshot?: Snapshot<O>) => O;
   latestVersion: () => SnapshotVersion<O> | undefined;
   waitForFirstSnapshot: (moduleToLoad: string) => Promise<void>;
   on: ValueOf<Pick<GhiiEmitter<EventTypes<O>>, 'on'>>;
@@ -122,7 +122,7 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       events.emit('ghii:version:new', latestVersion()!);
     }
-    return latestVersion()?.value;
+    return latestVersion()?.value ?? prepareDefaults(sections);
   }
 
   function waitForFirstSnapshot(moduleToLoad: string) {

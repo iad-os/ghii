@@ -161,13 +161,14 @@ describe('Ghii Config', () => {
 
   describe('history and version', () => {
     it('have empty history and latestVersion if no snapshot is taken', () => {
-      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
+      const target = Ghii<{ a: { test: 'string' | 'defaults' } }>().section('a', {
         validator: joi => joi.string(),
+        defaults: { test: 'defaults' },
       });
 
       expect(target.history()).toStrictEqual([]);
       expect(target.latestVersion()).toBeUndefined();
-      expect(target.snapshot()).toBeUndefined();
+      expect(target.snapshot()).toStrictEqual({ a: { test: 'defaults' } });
     });
 
     it('have history and latestVersion if  snapshot is taken', () => {
