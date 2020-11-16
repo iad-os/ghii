@@ -138,7 +138,7 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
       setTimeout(() => {
         events.removeAllListeners('ghii:version:first');
         if (onTimeout) onTimeout();
-      ``  reject();
+        reject();
       }, timeout);
     });
   }
