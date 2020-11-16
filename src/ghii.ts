@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import Joi from 'joi';
 import { cloneDeep, map, merge, reduce } from 'lodash';
+import path from 'path';
 import { PartialDeep, ValueOf } from 'type-fest';
 import TypedEventEmitter from './TypedEventEmitter';
 export interface Topic<T> {
@@ -18,7 +19,10 @@ export type GhiiInstance<O extends { [P in keyof O]: O[P] }> = {
   history: () => SnapshotVersion<O>[];
   snapshot: (newSnapshot?: Snapshot<O>) => O;
   latestVersion: () => SnapshotVersion<O> | undefined;
-  waitForFirstSnapshot: (moduleToLoad: string, options?: { timeout?: number; onTimeout?: () => void }) => Promise<O>;
+  waitForFirstSnapshot: (
+    options?: { timeout?: number; onTimeout?: () => void },
+    ...moduleToLoad: string[]
+  ) => Promise<O>;
   on: ValueOf<Pick<GhiiEmitter<EventTypes<O>>, 'on'>>;
   once: ValueOf<Pick<GhiiEmitter<EventTypes<O>>, 'once'>>;
 };
@@ -127,7 +131,7 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
     return latestVersion()?.value ?? prepareDefaults(sections);
   }
 
-  function waitForFirstSnapshot(moduleToLoad: string, options?: { timeout?: number; onTimeout?: () => void }) {
+  function waitForFirstSnapshot(options?: { timeout?: number; onTimeout?: () => void }, ...moduleToLoad: string[]) {
     const { timeout = 30000, onTimeout } = options || {};
 
     return new Promise<O>((resolve, reject) => {
@@ -169,8 +173,8 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
 
 export default ghii;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function _tryImport(moduleToLoad: string, resolve: (value?: void) => void, reject: (reason?: any) => void) {
-  import(moduleToLoad)
+function _tryImport(moduleToLoad: string[], resolve: (value?: void) => void, reject: (reason?: any) => void) {
+  import(path.join(...moduleToLoad))
     .then(module => {
       resolve(module);
     })
