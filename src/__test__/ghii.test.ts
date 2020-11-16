@@ -1,6 +1,10 @@
+import { fakeTimeoutLoader } from '../fakeLoaders';
 import Ghii, { ghii } from '../ghii';
 
 describe('Ghii Config', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
   it('Ghii is instantiable', () => {
     expect(Ghii).toBeDefined();
   });
@@ -181,26 +185,19 @@ describe('Ghii Config', () => {
       expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
     });
     it('await snapshot', async () => {
-      let guard = false;
-      const target = Ghii<{ a: { test: 'string' } }>()
+      const target = Ghii<{ a: { test: 'string' | 'done' } }>()
         .section('a', {
           validator: joi => joi.object({ test: joi.string() }),
+          defaults: { test: 'string' },
         })
-        .loader(
-          () =>
-            new Promise(resolve => {
-              setTimeout(() => {
-                guard = true;
-                resolve({ a: { test: 'string' } });
-              }, 10);
-            })
-        );
+        .loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
 
-      await target.waitForFirstSnapshot('./__test__/fakeModule');
-      expect(guard).toBeTruthy();
+      const firstPromise = target.waitForFirstSnapshot('./__test__/fakeModule');
+      jest.advanceTimersToNextTimer();
+      await firstPromise;
       expect(target.history()).toHaveLength(1);
       expect(target.latestVersion()).toBeDefined();
-      expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
+      expect(target.snapshot()).toStrictEqual({ a: { test: 'done' } });
     });
 
     it('await when a snapshot is available', async () => {
@@ -235,16 +232,11 @@ describe('Ghii Config', () => {
         .section('a', {
           validator: joi => joi.object({ test: joi.string() }),
         })
-        .loader(
-          () =>
-            new Promise(resolve => {
-              setTimeout(() => {
-                resolve({ a: { test: 'string' } });
-              }, 50);
-            })
-        );
+        .loader(() => fakeTimeoutLoader({}, 30));
       try {
-        await target.waitForFirstSnapshot('./__test__/fakeModule', { timeout: 10 });
+        const promise = target.waitForFirstSnapshot('./__test__/fakeModule', { timeout: 10 });
+        jest.advanceTimersToNextTimer();
+        await promise;
         fail("This line isn't reachable, without a snapshot!");
       } catch (err) {
         // Good
@@ -273,16 +265,11 @@ describe('Ghii Config', () => {
         .section('a', {
           validator: joi => joi.object({ test: joi.string() }),
         })
-        .loader(
-          () =>
-            new Promise(resolve => {
-              setTimeout(() => {
-                resolve({ a: { test: 'string' } });
-              }, 30);
-            })
-        );
+        .loader(() => fakeTimeoutLoader({ a: { test: 'string' } }, 30));
       try {
-        await target.waitForFirstSnapshot('./__test__/fakeModule', { timeout: 10, onTimeout: guardFn });
+        const promise = target.waitForFirstSnapshot('./__test__/fakeModule', { timeout: 10, onTimeout: guardFn });
+        jest.advanceTimersToNextTimer();
+        await promise;
         fail("This line isn't reachable, without a snapshot!");
       } catch (err) {
         expect(guardFn).toBeCalled();
