@@ -62,6 +62,7 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
   function prepareDefaults(sections: Sections<O>): Snapshot<O> {
     return reduce(
       sections,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (acc: any, value, key) => {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         if (!value!.defaults) return acc;
@@ -73,6 +74,7 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function validate(validators: { [key in ObjectKeys]?: Joi.Schema }, result: any) {
     const validation = await Promise.allSettled(
       map(
@@ -128,14 +130,6 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
   function waitForFirstSnapshot(moduleToLoad: string, options?: { timeout?: number; onTimeout?: () => void }) {
     const { timeout = 30000, onTimeout } = options || {};
 
-    function resolveSnapshot(resolve: (value: O) => void, reject: (reason: any) => void) {
-      return function resolver() {
-        takeSnapshot().then(
-          value => resolve(value),
-          err => reject(err)
-        );
-      };
-    }
     return new Promise<O>((resolve, reject) => {
       if (latestVersion()) {
         _tryImport(
@@ -148,15 +142,15 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
         return;
       }
       takeSnapshot().then(snapshot => {
-        _tryImport(moduleToLoad, resolveSnapshot(resolve, reject), reject);
-        resolve(snapshot);
+        _tryImport(moduleToLoad, () => resolve(snapshot), reject);
       }, reject);
 
-      setTimeout(() => {
-        events.removeAllListeners('ghii:version:first');
-        if (onTimeout) onTimeout();
-        reject({ reason: new Error('timeout') });
-      }, timeout);
+      if (timeout > 0)
+        setTimeout(() => {
+          events.removeAllListeners('ghii:version:first');
+          if (onTimeout) onTimeout();
+          reject({ reason: new Error('timeout') });
+        }, timeout);
     });
   }
 
@@ -174,6 +168,7 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
 }
 
 export default ghii;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function _tryImport(moduleToLoad: string, resolve: (value?: void) => void, reject: (reason?: any) => void) {
   import(moduleToLoad)
     .then(module => {
