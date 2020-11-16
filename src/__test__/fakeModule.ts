@@ -1,2 +1,2 @@
-const test = true;
-export default test;
+let test = 0;
+export default ++test;

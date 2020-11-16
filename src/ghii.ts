@@ -18,7 +18,7 @@ export type GhiiInstance<O extends { [P in keyof O]: O[P] }> = {
   history: () => SnapshotVersion<O>[];
   snapshot: (newSnapshot?: Snapshot<O>) => O;
   latestVersion: () => SnapshotVersion<O> | undefined;
-  waitForFirstSnapshot: (moduleToLoad: string) => Promise<void>;
+  waitForFirstSnapshot: (moduleToLoad: string, options?: { timeout?: number; onTimeout?: () => void }) => Promise<void>;
   on: ValueOf<Pick<GhiiEmitter<EventTypes<O>>, 'on'>>;
   once: ValueOf<Pick<GhiiEmitter<EventTypes<O>>, 'once'>>;
 };
@@ -125,14 +125,21 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
     return latestVersion()?.value ?? prepareDefaults(sections);
   }
 
-  function waitForFirstSnapshot(moduleToLoad: string) {
+  function waitForFirstSnapshot(moduleToLoad: string, options?: { timeout?: number; onTimeout?: () => void }) {
+    const { timeout = 30000, onTimeout } = options || {};
     return new Promise<void>((resolve, reject) => {
       if (latestVersion()) {
         _tryImport(moduleToLoad, resolve, reject);
+        return;
       }
-      events.once('ghii:version:new', () => {
+      events.once('ghii:version:first', () => {
         _tryImport(moduleToLoad, resolve, reject);
       });
+      setTimeout(() => {
+        events.removeAllListeners('ghii:version:first');
+        if (onTimeout) onTimeout();
+      ``  reject();
+      }, timeout);
     });
   }
 
