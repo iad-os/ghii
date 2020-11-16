@@ -18,7 +18,7 @@ export type GhiiInstance<O extends { [P in keyof O]: O[P] }> = {
   history: () => SnapshotVersion<O>[];
   snapshot: (newSnapshot?: Snapshot<O>) => O;
   latestVersion: () => SnapshotVersion<O> | undefined;
-  waitForFirstSnapshot: (moduleToLoad: string, options?: { timeout?: number; onTimeout?: () => void }) => Promise<void>;
+  waitForFirstSnapshot: (moduleToLoad: string, options?: { timeout?: number; onTimeout?: () => void }) => Promise<O>;
   on: ValueOf<Pick<GhiiEmitter<EventTypes<O>>, 'on'>>;
   once: ValueOf<Pick<GhiiEmitter<EventTypes<O>>, 'once'>>;
 };
@@ -127,18 +127,35 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
 
   function waitForFirstSnapshot(moduleToLoad: string, options?: { timeout?: number; onTimeout?: () => void }) {
     const { timeout = 30000, onTimeout } = options || {};
-    return new Promise<void>((resolve, reject) => {
+
+    function resolveSnapshot(resolve: (value: O) => void, reject: (reason: any) => void) {
+      return function resolver() {
+        takeSnapshot().then(
+          value => resolve(value),
+          err => reject(err)
+        );
+      };
+    }
+    return new Promise<O>((resolve, reject) => {
       if (latestVersion()) {
-        _tryImport(moduleToLoad, resolve, reject);
+        _tryImport(
+          moduleToLoad,
+          () => {
+            resolve(snapshot());
+          },
+          reject
+        );
         return;
       }
-      events.once('ghii:version:first', () => {
-        _tryImport(moduleToLoad, resolve, reject);
-      });
+      takeSnapshot().then(snapshot => {
+        _tryImport(moduleToLoad, resolveSnapshot(resolve, reject), reject);
+        resolve(snapshot);
+      }, reject);
+
       setTimeout(() => {
         events.removeAllListeners('ghii:version:first');
         if (onTimeout) onTimeout();
-        reject();
+        reject({ reason: new Error('timeout') });
       }, timeout);
     });
   }
@@ -162,5 +179,5 @@ function _tryImport(moduleToLoad: string, resolve: (value?: void) => void, rejec
     .then(module => {
       resolve(module);
     })
-    .catch(reject);
+    .catch(reason => reject(reason));
 }

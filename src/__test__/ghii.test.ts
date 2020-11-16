@@ -181,16 +181,23 @@ describe('Ghii Config', () => {
       expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
     });
     it('await snapshot', async () => {
-      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        validator: joi => joi.string(),
-      });
-      setTimeout(() => {
-        {
-          target.snapshot({ a: { test: 'string' } });
-        }
-      }, 100);
-      await target.waitForFirstSnapshot('./__test__/fakeModule');
+      let guard = false;
+      const target = Ghii<{ a: { test: 'string' } }>()
+        .section('a', {
+          validator: joi => joi.object({ test: joi.string() }),
+        })
+        .loader(
+          () =>
+            new Promise(resolve => {
+              setTimeout(() => {
+                guard = true;
+                resolve({ a: { test: 'string' } });
+              }, 10);
+            })
+        );
 
+      await target.waitForFirstSnapshot('./__test__/fakeModule');
+      expect(guard).toBeTruthy();
       expect(target.history()).toHaveLength(1);
       expect(target.latestVersion()).toBeDefined();
       expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
@@ -223,43 +230,20 @@ describe('Ghii Config', () => {
       expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
     });
 
-    it('time out await snapshot', async () => {
-      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        validator: joi => joi.string(),
-      });
-      const timeoutGuard = jest.fn();
-      try {
-        await target.waitForFirstSnapshot('./__test__/fakeModule', { timeout: 100, onTimeout: timeoutGuard });
-        fail("This line isn't reachable, without a snapshot!");
-      } catch (err) {
-        expect(timeoutGuard).toBeCalled();
-      }
-    });
-    it('time out await snapshot', async () => {
-      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        validator: joi => joi.string(),
-      });
-      try {
-        await target.waitForFirstSnapshot('./__test__/fakeModule', { timeout: 100 });
-        fail("This line isn't reachable, without a snapshot!");
-      } catch (err) {
-        // Good
-      }
-    });
-
     it('slow loader time out await snapshot', async () => {
       const target = Ghii<{ a: { test: 'string' } }>()
         .section('a', {
-          validator: joi => joi.string(),
+          validator: joi => joi.object({ test: joi.string() }),
         })
         .loader(
           () =>
             new Promise(resolve => {
-              setTimeout(resolve, 50);
+              setTimeout(() => {
+                resolve({ a: { test: 'string' } });
+              }, 50);
             })
         );
       try {
-        target.takeSnapshot();
         await target.waitForFirstSnapshot('./__test__/fakeModule', { timeout: 10 });
         fail("This line isn't reachable, without a snapshot!");
       } catch (err) {
