@@ -5,7 +5,6 @@ import path from 'path';
 import { PartialDeep, ValueOf } from 'type-fest';
 import TypedEventEmitter from './TypedEventEmitter';
 export interface Topic<T> {
-  required?: boolean;
   defaults?: PartialDeep<T> | T;
   validator: (joi: typeof Joi) => Joi.Schema;
 }
@@ -48,7 +47,6 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
 
   const events = (new EventEmitter() as unknown) as GhiiEmitter<O>;
   function section<K extends ObjectKeys>(this: GhiiInstance<O>, name: K, topic: Topic<O[K]>): ReturnType<typeof ghii> {
-    if (topic.required !== false) topic.required = true;
     sections[name] = topic;
     validators[name] = topic.validator(Joi);
     return this;
@@ -166,8 +164,8 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
     latestVersion,
     snapshot,
     waitForFirstSnapshot,
-    on: events.on,
-    once: events.once,
+    on: events.on.bind(events),
+    once: events.once.bind(events),
   };
 }
 

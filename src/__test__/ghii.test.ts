@@ -59,7 +59,6 @@ describe('Ghii Config', () => {
             prop: joi.string().required(),
           });
         },
-        required: false,
       });
       target.loader(async () => ({ foo: { prop: 'ciao' } }));
       const result = await target.takeSnapshot();
@@ -74,7 +73,6 @@ describe('Ghii Config', () => {
         validator(joi) {
           return joi.string().allow('a', 'b');
         },
-        required: false,
       });
       target.loader(async () => ({ foo: 'b' }));
       const result = await target.takeSnapshot();
@@ -90,7 +88,6 @@ describe('Ghii Config', () => {
             prop: joi.string().required(),
           });
         },
-        required: true,
       });
       target.loader(async () => ({ foo: { prop: 'ciao' } }));
       const result = await target.takeSnapshot();
@@ -267,11 +264,7 @@ describe('Ghii Config', () => {
         })
         .loader(() => fakeTimeoutLoader({ a: { test: 'string' } }, 30));
       try {
-        const promise = target.waitForFirstSnapshot(
-          { timeout: 10, onTimeout: guardFn },
-          __dirname,
-          './fakeModule'
-        );
+        const promise = target.waitForFirstSnapshot({ timeout: 10, onTimeout: guardFn }, __dirname, './fakeModule');
         jest.advanceTimersToNextTimer();
         await promise;
         fail("This line isn't reachable, without a snapshot!");
