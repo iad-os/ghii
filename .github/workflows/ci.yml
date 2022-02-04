@@ -1,0 +1,52 @@
+name: Node.js CI
+
+on: 
+  push: 
+    branches:
+      - main
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: 'Setup node'
+      uses: actions/setup-node@v2
+      with:
+        node-version: 16
+
+    - name: 'install deps'
+      run: npm ci --no-audit
+    - run: npm run lint --if-present
+    - name: 'tests'
+      run: npm test
+    - name: build
+      run: npm run build --if-present
+      env:
+        CI: true
+  publish:
+      name: publish
+      runs-on: ubuntu-latest
+
+      steps:
+      - uses: actions/checkout@v2
+      - name: 'Setup node'
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+          registry-url: https://registry.npmjs.org
+
+      - name: install deps, tests and build
+        run: |
+          npm ci --no-audit
+          npm run test
+          npm run build --if-present
+        env: 
+          CI: true
+
+      - name: publish to npm
+        run: npm publish --access=public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
