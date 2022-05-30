@@ -1,5 +1,10 @@
 # GHII
 
+For generate documentation execute this command line:
+```sh
+npx typedoc src/ghii.ts
+```
+
 ## WHAT'S GHII?
 When an application has multiple configurations it has to check them but the risk is to lose something. <br />
 Ghii is a library to validate and manage app configurations (environmental variables, json package, http, yaml) in a single object ensuring simplicity and security.

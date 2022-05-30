@@ -5,7 +5,10 @@ import path from 'path';
 import { PartialDeep, ValueOf } from 'type-fest';
 import TypedEventEmitter from './TypedEventEmitter';
 
-/** @interface Topic
+/**
+ * A Topic that support
+ * @export
+ * @interface Topic
  * @param T
  * @property {PartialDeep<T> | undefined} defaults
  * @method {Joi.Schema} validator {@param {typeof Joi} joi}
@@ -14,7 +17,12 @@ export interface Topic<T> {
   defaults?: PartialDeep<T> | T;
   validator: (joi: typeof Joi) => Joi.Schema;
 }
-/**@type Loader */
+/**
+ * A type that rappresent a loader in where each key rapresents
+ * the loader name
+ * @export
+ * @type Loader
+ *  */
 export type Loader = () => Promise<{ [key: string]: unknown }>;
 
 /** @type GhiiInstance */
@@ -54,7 +62,7 @@ export interface GhiiEmitter<O> extends TypedEventEmitter<EventTypes<O>> {}
 /**
  * @description Instance of Ghii object
  * @type {O extends { [P in keyof O]: O[P] }}
- * @returns {GhiiInstance}
+ * @returns GhiiInstance
  */
 export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
   type ObjectKeys = keyof O;
@@ -88,6 +96,10 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
     return this;
   }
 
+  /** Return loaders
+   * @param {Loader[]} loaders
+   * @return Promise of all loaders
+   */
   function runLoaders(loaders: Loader[]) {
     return Promise.all(loaders.map(loader => loader()));
   }
@@ -149,6 +161,10 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
     return cloneDeep(versions);
   }
 
+  /**
+   * Return latest snapshot version
+   * @property {SnapshotVersion<O> | undefined} latestVersion
+   */
   function latestVersion() {
     if (versions.length === 0) return;
     return cloneDeep(versions[versions.length - 1]);
