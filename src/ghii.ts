@@ -37,7 +37,11 @@ export type SnapshotVersion<O extends { [P in keyof O]: O[P] }> = { meta: { time
 export interface EventTypes<O> {
   'ghii:version:first': undefined;
   'ghii:version:new': SnapshotVersion<O>;
-  'ghii:shouldkill': undefined;
+  'ghii:shouldkill': {
+    old: Snapshot<PartialDeep<O>>;
+    current: Snapshot<PartialDeep<O>>;
+    section: keyof Snapshot<O>;
+  };
 }
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface GhiiEmitter<O> extends TypedEventEmitter<EventTypes<O>> {}
@@ -110,8 +114,10 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function shouldKillFn(sk: typeof shouldKills, old: SnapshotVersion<O>, current: SnapshotVersion<O>) {
     map(sk, (fn, key) => {
-      const result = fn ? fn(get(old.value, key), get(current.value, key)) : false;
-      result && events.emit('ghii:shouldkill', undefined);
+      const oldSection = get(old.value, key);
+      const currentSection = get(current.value, key);
+      const result = fn ? fn(oldSection, currentSection) : false;
+      result && events.emit('ghii:shouldkill', { current: currentSection, old: oldSection, section: key as keyof O });
     });
   }
 

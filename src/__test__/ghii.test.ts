@@ -177,9 +177,12 @@ describe('Ghii Config', () => {
       await target.takeSnapshot();
 
       return new Promise(resolve => {
+        console.log = jest.fn();
         target.loader(async () => ({ foo: { prop: 'hallo' } }));
         target.takeSnapshot();
-        target.on('ghii:shouldkill', () => {
+        target.on('ghii:shouldkill', ({ current, old, section }) => {
+          expect(current).not.toStrictEqual(old);
+          expect('foo').toStrictEqual(section);
           resolve(true);
         });
       });
