@@ -1,3 +1,4 @@
+import { isEqual } from 'lodash';
 import { fakeTimeoutLoader } from '../fakeLoaders';
 import Ghii, { ghii } from '../ghii';
 
@@ -157,6 +158,31 @@ describe('Ghii Config', () => {
       return expect(target.takeSnapshot()).rejects.toMatchObject([
         { reason: { err: true, key: 'foo' }, status: 'rejected' },
       ]);
+    });
+    it('load with kill when', async () => {
+      type FooType = { prop: string };
+      const target = ghii<{ foo: FooType }>();
+      target.section('foo', {
+        shouldKill(old, current) {
+          const changed = !isEqual(old, current);
+          return changed;
+        },
+        validator(joi) {
+          return joi.object<FooType>({
+            prop: joi.string().required(),
+          });
+        },
+      });
+      target.loader(async () => ({ foo: { prop: 'ciao' } }));
+      await target.takeSnapshot();
+
+      return new Promise(resolve => {
+        target.loader(async () => ({ foo: { prop: 'hallo' } }));
+        target.takeSnapshot();
+        target.on('ghii:shouldkill', () => {
+          resolve(true);
+        });
+      });
     });
   });
 
