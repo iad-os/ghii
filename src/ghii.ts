@@ -7,7 +7,7 @@ import TypedEventEmitter from './TypedEventEmitter';
 export interface Topic<T> {
   defaults?: PartialDeep<T> | T;
   validator: (joi: typeof Joi) => Joi.Schema;
-  shouldKill?: (old: SnapshotVersion<T>, current: SnapshotVersion<T>) => boolean;
+  shouldKill?: (old: Snapshot<T>, current: Snapshot<T>) => boolean;
 }
 
 export type Loader = () => Promise<{ [key: string]: unknown }>;
@@ -29,7 +29,7 @@ export type GhiiInstance<O extends { [P in keyof O]: O[P] }> = {
 export type Snapshot<O extends { [P in keyof O]: O[P] }> = { [P in keyof O]: O[P] };
 export type Sections<O extends { [P in keyof O]: O[P] }> = { [key in keyof O]?: Topic<O[key]> };
 export type ShouldKill<O extends { [P in keyof O]: O[P] }> = {
-  [key in keyof O]?: (old: SnapshotVersion<O[key]>, current: SnapshotVersion<O[key]>) => boolean;
+  [key in keyof O]?: (old: Snapshot<O[key]>, current: Snapshot<O[key]>) => boolean;
 };
 export type Validator<O extends { [P in keyof O]: O[P] }> = { [key in keyof O]?: Joi.Schema };
 export type SnapshotVersion<O extends { [P in keyof O]: O[P] }> = { meta: { timestamp: Date }; value: Snapshot<O> };
