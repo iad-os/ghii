@@ -23,22 +23,22 @@ describe('Ghii Config', () => {
       target
         .section('foo', {
           defaults: { prop: 'ciao' },
-          validator(joi) {
-            return joi.object<FooType>({
-              prop: joi.string().required(),
+          schema(Type) {
+            return Type.Object({
+              prop: Type.String(),
             });
           },
         })
         .section('foo2', {
           defaults: { prop: 'ciao' },
-          validator(joi) {
-            return joi.object<FooType>({
-              prop: joi.string().required(),
+          schema(Type) {
+            return Type.Object({
+              prop: Type.String(),
             });
           },
         })
         .section('s3', {
-          validator: joi => joi.object({ url: joi.string().required() }).unknown(),
+          schema: Type => Type.Object({ url: Type.String() }),
           defaults: { ciao: 'world' },
         })
         .loader(async () => ({ s3: { url: 'ciao' } }));
@@ -55,9 +55,9 @@ describe('Ghii Config', () => {
       const target = ghii<{ foo: FooType }>();
       target.section('foo', {
         defaults: { prop: 'goodbye' },
-        validator(joi) {
-          return joi.object<FooType>({
-            prop: joi.string().required(),
+        schema(Type) {
+          return Type.Object({
+            prop: Type.String(),
           });
         },
       });
@@ -71,8 +71,8 @@ describe('Ghii Config', () => {
       const target = ghii<{ foo: FooType }>();
       target.section('foo', {
         defaults: 'a',
-        validator(joi) {
-          return joi.string().allow('a', 'b');
+        schema(Type) {
+          return Type.Union([Type.Literal('a'), Type.Literal('b')]);
         },
       });
       target.loader(async () => ({ foo: 'b' }));
@@ -84,9 +84,9 @@ describe('Ghii Config', () => {
       type FooType = { prop: string };
       const target = ghii<{ foo: FooType }>();
       target.section('foo', {
-        validator(joi) {
-          return joi.object<FooType>({
-            prop: joi.string().required(),
+        schema(Type) {
+          return Type.Object({
+            prop: Type.String(),
           });
         },
       });
@@ -99,9 +99,9 @@ describe('Ghii Config', () => {
       type FooType = { prop: string };
       const target = ghii<{ foo: FooType }>();
       target.section('foo', {
-        validator(joi) {
-          return joi.object<FooType>({
-            prop: joi.string().required(),
+        schema(Type) {
+          return Type.Object({
+            prop: Type.String(),
           });
         },
       });
@@ -114,16 +114,14 @@ describe('Ghii Config', () => {
       const target = ghii<{ foo: FooType }>();
       target.section('foo', {
         defaults: { prop: 'goodbye' },
-        validator(joi) {
-          return joi.object<FooType>({
-            prop: joi.string().length(10).required(),
+        schema(Type) {
+          return Type.Object({
+            prop: Type.String({ maxLength: 10, minLength: 10 }),
           });
         },
       });
 
-      return expect(target.takeSnapshot()).rejects.toMatchObject([
-        { reason: { err: true, key: 'foo' }, status: 'rejected' },
-      ]);
+      return expect(target.takeSnapshot()).rejects.toMatchObject([{ path: '/prop', value: 'goodbye', section: 'foo' }]);
     });
 
     it('load loader (invalid) options', () => {
@@ -131,16 +129,14 @@ describe('Ghii Config', () => {
       const target = ghii<{ foo: FooType }>();
       target.section('foo', {
         defaults: { prop: 'goodbye' },
-        validator(joi) {
-          return joi.object<FooType>({
-            prop: joi.string().length(7).required(),
+        schema(Type) {
+          return Type.Object({
+            prop: Type.String({ maxLength: 7, minLength: 7 }),
           });
         },
       });
       target.loader(async () => ({ foo: { prop: 'ciao' } }));
-      return expect(target.takeSnapshot()).rejects.toMatchObject([
-        { reason: { err: true, key: 'foo' }, status: 'rejected' },
-      ]);
+      return expect(target.takeSnapshot()).rejects.toMatchObject([{ path: '/prop', value: 'ciao', section: 'foo' }]);
     });
 
     it('load loader (invalid) options', () => {
@@ -148,28 +144,26 @@ describe('Ghii Config', () => {
       const target = ghii<{ foo: FooType }>();
       target.section('foo', {
         // defaults: { prop: 'goodbye' },
-        validator(joi) {
-          return joi.object<FooType>({
-            prop: joi.string().length(3).required(),
+        schema(Type) {
+          return Type.Object({
+            prop: Type.String({ maxLength: 3, minLength: 3 }),
           });
         },
       });
       target.loader(async () => ({ foo: { prop: 'ciao' } }));
-      return expect(target.takeSnapshot()).rejects.toMatchObject([
-        { reason: { err: true, key: 'foo' }, status: 'rejected' },
-      ]);
+      return expect(target.takeSnapshot()).rejects.toMatchObject([{ path: '/prop', value: 'ciao', section: 'foo' }]);
     });
-    it('load with kill when', async () => {
+    it('load breaking change version', async () => {
       type FooType = { prop: string };
       const target = ghii<{ foo: FooType }>();
       target.section('foo', {
-        shouldKill(old, current) {
+        breakingChange(old, current) {
           const changed = !isEqual(old, current);
           return changed;
         },
-        validator(joi) {
-          return joi.object<FooType>({
-            prop: joi.string().required(),
+        schema(Type) {
+          return Type.Object({
+            prop: Type.String(),
           });
         },
       });
@@ -180,9 +174,9 @@ describe('Ghii Config', () => {
         console.log = jest.fn();
         target.loader(async () => ({ foo: { prop: 'hallo' } }));
         target.takeSnapshot();
-        target.on('ghii:shouldkill', ({ current, old, section }) => {
+        target.on('ghii:version:breaking', ({ current, old, breakingSection }) => {
           expect(current).not.toStrictEqual(old);
-          expect('foo').toStrictEqual(section);
+          expect('foo').toStrictEqual(breakingSection);
           resolve(true);
         });
       });
@@ -192,7 +186,7 @@ describe('Ghii Config', () => {
   describe('history and version', () => {
     it('have empty history and latestVersion if no snapshot is taken', () => {
       const target = Ghii<{ a: { test: 'string' | 'defaults' } }>().section('a', {
-        validator: joi => joi.string(),
+        schema: Type => Type.Optional(Type.String()),
         defaults: { test: 'defaults' },
       });
 
@@ -203,7 +197,7 @@ describe('Ghii Config', () => {
 
     it('have history and latestVersion if  snapshot is taken', () => {
       const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        validator: joi => joi.string(),
+        schema: Type => Type.Optional(Type.String()),
       });
       target.snapshot({ a: { test: 'string' } });
       expect(target.history()).toHaveLength(1);
@@ -213,7 +207,7 @@ describe('Ghii Config', () => {
     it('await snapshot', async () => {
       const target = Ghii<{ a: { test: 'string' | 'done' } }>()
         .section('a', {
-          validator: joi => joi.object({ test: joi.string() }),
+          schema: Type => Type.Object({ test: Type.Optional(Type.String()) }),
           defaults: { test: 'string' },
         })
         .loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
@@ -228,7 +222,7 @@ describe('Ghii Config', () => {
 
     it('await when a snapshot is available', async () => {
       const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        validator: joi => joi.string(),
+        schema: Type => Type.Optional(Type.String()),
       });
       target.snapshot({ a: { test: 'string' } });
       await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
@@ -240,7 +234,7 @@ describe('Ghii Config', () => {
 
     it('await when a snapshot is available', async () => {
       const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        validator: joi => joi.string(),
+        schema: Type => Type.Optional(Type.String()),
       });
       target.snapshot({ a: { test: 'string' } });
       await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
@@ -256,7 +250,7 @@ describe('Ghii Config', () => {
     it('slow loader time out await snapshot', async () => {
       const target = Ghii<{ a: { test: 'string' } }>()
         .section('a', {
-          validator: joi => joi.object({ test: joi.string() }),
+          schema: Type => Type.Object({ test: Type.Optional(Type.String()) }),
         })
         .loader(() => fakeTimeoutLoader({}, 30));
       try {
@@ -273,7 +267,7 @@ describe('Ghii Config', () => {
       const guardFn = jest.fn();
       const target = Ghii<{ a: { test: 'string' } }>()
         .section('a', {
-          validator: joi => joi.object({ test: joi.string() }),
+          schema: Type => Type.Object({ test: Type.Optional(Type.String()) }),
         })
         .loader(async () => {
           throw new Error('test error');
@@ -289,7 +283,7 @@ describe('Ghii Config', () => {
       const guardFn = jest.fn();
       const target = Ghii<{ a: { test: 'string' } }>()
         .section('a', {
-          validator: joi => joi.object({ test: joi.string() }),
+          schema: Type => Type.Object({ test: Type.Optional(Type.String()) }),
         })
         .loader(() => fakeTimeoutLoader({ a: { test: 'string' } }, 30));
       try {
@@ -305,7 +299,7 @@ describe('Ghii Config', () => {
     it('await on missing module', async () => {
       const guardFn = jest.fn();
       const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        validator: joi => joi.string(),
+        schema: Type => Type.Optional(Type.String()),
       });
       try {
         await target.waitForFirstSnapshot({ timeout: 0 }, './missingModule');
@@ -318,7 +312,7 @@ describe('Ghii Config', () => {
     it('await on absolute module', async () => {
       const guardFn = jest.fn();
       const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        validator: joi => joi.string(),
+        schema: Type => Type.Optional(Type.String()),
       });
       await target.waitForFirstSnapshot({ timeout: 100, onTimeout: guardFn }, __dirname, './fakeModule');
     });

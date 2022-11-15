@@ -1,13 +1,14 @@
+import { TSchema, Type } from '@sinclair/typebox';
+import { Value, ValueError } from '@sinclair/typebox/value';
 import { EventEmitter } from 'events';
-import Joi from 'joi';
 import { cloneDeep, get, map, merge, reduce } from 'lodash';
 import path from 'path';
 import { PartialDeep, ValueOf } from 'type-fest';
 import TypedEventEmitter from './TypedEventEmitter';
 export interface Topic<T> {
   defaults?: PartialDeep<T> | T;
-  validator: (joi: typeof Joi) => Joi.Schema;
-  shouldKill?: (old: Snapshot<T>, current: Snapshot<T>) => boolean;
+  schema: (type: typeof Type) => TSchema;
+  breakingChange?: (old: Snapshot<T>, current: Snapshot<T>) => boolean;
 }
 
 export type Loader = () => Promise<{ [key: string]: unknown }>;
@@ -28,19 +29,19 @@ export type GhiiInstance<O extends { [P in keyof O]: O[P] }> = {
 };
 export type Snapshot<O extends { [P in keyof O]: O[P] }> = { [P in keyof O]: O[P] };
 export type Sections<O extends { [P in keyof O]: O[P] }> = { [key in keyof O]?: Topic<O[key]> };
-export type ShouldKill<O extends { [P in keyof O]: O[P] }> = {
+export type BreakingChange<O extends { [P in keyof O]: O[P] }> = {
   [key in keyof O]?: (old: Snapshot<O[key]>, current: Snapshot<O[key]>) => boolean;
 };
-export type Validator<O extends { [P in keyof O]: O[P] }> = { [key in keyof O]?: Joi.Schema };
+export type Schema<O extends { [P in keyof O]: O[P] }> = { [key in keyof O]?: TSchema };
 export type SnapshotVersion<O extends { [P in keyof O]: O[P] }> = { meta: { timestamp: Date }; value: Snapshot<O> };
 
 export interface EventTypes<O> {
   'ghii:version:first': undefined;
   'ghii:version:new': SnapshotVersion<O>;
-  'ghii:shouldkill': {
-    old: Snapshot<PartialDeep<O>>;
-    current: Snapshot<PartialDeep<O>>;
-    section: keyof Snapshot<O>;
+  'ghii:version:breaking': {
+    old: SnapshotVersion<O>;
+    current: SnapshotVersion<O>;
+    breakingSection: keyof Snapshot<O>;
   };
 }
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -50,17 +51,17 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
   type ObjectKeys = keyof O;
 
   const sections: Sections<O> = {};
-  const validators: Validator<O> = {};
-  const shouldKills: ShouldKill<O> = {};
+  const schemas: Schema<O> = {};
+  const breakingChanges: BreakingChange<O> = {};
   const loaders: Loader[] = [];
   const versions: SnapshotVersion<O>[] = [];
 
   const events = (new EventEmitter() as unknown) as GhiiEmitter<O>;
   function section<K extends ObjectKeys>(this: GhiiInstance<O>, name: K, topic: Topic<O[K]>): ReturnType<typeof ghii> {
     sections[name] = topic;
-    validators[name] = topic.validator(Joi);
-    shouldKills[name] = (old, current) => {
-      return topic.shouldKill ? topic.shouldKill(old, current) : false;
+    schemas[name] = topic.schema(Type);
+    breakingChanges[name] = (old, current) => {
+      return topic.breakingChange ? topic.breakingChange(old, current) : false;
     };
     return this;
   }
@@ -90,34 +91,28 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async function validate(validators: { [key in ObjectKeys]?: Joi.Schema }, result: any) {
-    const validation = await Promise.allSettled(
-      map(
-        validators,
-        (validator, key) =>
-          new Promise((resolve, reject) => {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            validator!.validateAsync(result[key]).then(
-              value => {
-                resolve({ key, err: false, value });
-              },
-              reason => {
-                reject({ key, err: true, reason });
-              }
-            );
-          })
-      )
-    );
-    return validation.filter(promise => promise.status === 'rejected');
+  function validate(_schemas: typeof schemas, result: any) {
+    let validationsError: ValueError[] = [];
+    map(_schemas, (value, key) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      if (!Value.Check(value!, result[key])) {
+        validationsError = [
+          ...validationsError,
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          ...[...Value.Errors(value!, result[key])].map(err => ({ ...err, section: key })),
+        ];
+      }
+    });
+    return validationsError;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function shouldKillFn(sk: typeof shouldKills, old: SnapshotVersion<O>, current: SnapshotVersion<O>) {
+  function breakingChangesFn(sk: typeof breakingChanges, old: SnapshotVersion<O>, current: SnapshotVersion<O>) {
     map(sk, (fn, key) => {
       const oldSection = get(old.value, key);
       const currentSection = get(current.value, key);
       const result = fn ? fn(oldSection, currentSection) : false;
-      result && events.emit('ghii:shouldkill', { current: currentSection, old: oldSection, section: key as keyof O });
+      result && events.emit('ghii:version:breaking', { current, old, breakingSection: key as keyof O });
     });
   }
 
@@ -127,13 +122,14 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
     const loaded = await runLoaders(loaders);
 
     const result: O = merge({}, defaults, ...loaded);
-    const validationErrors = await validate(validators, result);
+    const validationErrors = validate(schemas, result);
+
     if (validationErrors.length) throw validationErrors;
     snapshot(result);
 
     if (versions && versions.length > 1) {
       const [current, old] = versions.reverse();
-      shouldKillFn(shouldKills, old, current);
+      breakingChangesFn(breakingChanges, old, current);
     }
 
     return result;

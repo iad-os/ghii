@@ -1,6 +1,6 @@
 {
   "name": "@ghii/ghii",
-  "version": "0.0.11",
+  "version": "0.1.0",
   "description": "A Funny configuration manager ",
   "maintainers": [
     {
@@ -95,7 +95,7 @@
     "typescript": "^4.0.5"
   },
   "dependencies": {
-    "joi": "^17.3.0",
+    "@sinclair/typebox": "^0.25.8",
     "lodash": "^4.17.20"
   }
 }
