@@ -171,7 +171,6 @@ describe('Ghii Config', () => {
       await target.takeSnapshot();
 
       return new Promise(resolve => {
-        console.log = jest.fn();
         target.loader(async () => ({ foo: { prop: 'hello' } }));
         target.takeSnapshot();
         target.on('ghii:version:breaking', ({ current, old, breakingSection }) => {
