@@ -172,7 +172,7 @@ describe('Ghii Config', () => {
 
       return new Promise(resolve => {
         console.log = jest.fn();
-        target.loader(async () => ({ foo: { prop: 'hallo' } }));
+        target.loader(async () => ({ foo: { prop: 'hello' } }));
         target.takeSnapshot();
         target.on('ghii:version:breaking', ({ current, old, breakingSection }) => {
           expect(current).not.toStrictEqual(old);
@@ -186,7 +186,7 @@ describe('Ghii Config', () => {
   describe('history and version', () => {
     it('have empty history and latestVersion if no snapshot is taken', () => {
       const target = Ghii<{ a: { test: 'string' | 'defaults' } }>().section('a', {
-        schema: Type => Type.Optional(Type.String()),
+        schema: Type => Type.Union([Type.Optional(Type.String()), Type.Undefined()]),
         defaults: { test: 'defaults' },
       });
 
@@ -197,7 +197,7 @@ describe('Ghii Config', () => {
 
     it('have history and latestVersion if  snapshot is taken', () => {
       const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        schema: Type => Type.Optional(Type.String()),
+        schema: Type => Type.Union([Type.Optional(Type.String()), Type.Undefined()]),
       });
       target.snapshot({ a: { test: 'string' } });
       expect(target.history()).toHaveLength(1);
@@ -222,7 +222,7 @@ describe('Ghii Config', () => {
 
     it('await when a snapshot is available', async () => {
       const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        schema: Type => Type.Optional(Type.String()),
+        schema: Type => Type.Union([Type.Optional(Type.String()), Type.Undefined()]),
       });
       target.snapshot({ a: { test: 'string' } });
       await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
@@ -234,7 +234,7 @@ describe('Ghii Config', () => {
 
     it('await when a snapshot is available', async () => {
       const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        schema: Type => Type.Optional(Type.String()),
+        schema: Type => Type.Union([Type.Optional(Type.String()), Type.Undefined()]),
       });
       target.snapshot({ a: { test: 'string' } });
       await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
@@ -299,7 +299,7 @@ describe('Ghii Config', () => {
     it('await on missing module', async () => {
       const guardFn = jest.fn();
       const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        schema: Type => Type.Optional(Type.String()),
+        schema: Type => Type.Union([Type.Optional(Type.String()), Type.Undefined()]),
       });
       try {
         await target.waitForFirstSnapshot({ timeout: 0 }, './missingModule');
@@ -312,7 +312,7 @@ describe('Ghii Config', () => {
     it('await on absolute module', async () => {
       const guardFn = jest.fn();
       const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        schema: Type => Type.Optional(Type.String()),
+        schema: Type => Type.Union([Type.Optional(Type.String()), Type.Undefined()]),
       });
       await target.waitForFirstSnapshot({ timeout: 100, onTimeout: guardFn }, __dirname, './fakeModule');
     });
