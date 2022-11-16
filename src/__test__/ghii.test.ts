@@ -187,24 +187,74 @@ describe('Ghii Config', () => {
       expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
     });
 
-    it('await when a snapshot is available', async () => {
+    it('await when a snapshot is available after change', async () => {
       const target = ghii(
         Type.Object({
           a: Type.Union([
             Type.Object({
-              test: Type.Optional(Type.Union([Type.Literal('string')])),
+              test: Type.Optional(Type.Union([Type.Literal('string'), Type.Literal('defaults')])),
             }),
             Type.Undefined(),
           ]),
         })
       );
-      target.snapshot({ a: { test: 'string' } });
+
+      target.snapshot({ a: { test: 'defaults' } });
       await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
       target.snapshot({ a: { test: 'string' } });
       await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
+
       const fakeModule = await import('./fakeModule');
       expect(fakeModule.default).toStrictEqual(1);
       expect(target.history()).toHaveLength(2);
+      expect(target.latestVersion()).toBeDefined();
+      expect(target.history().reverse()[1].value).toStrictEqual({ a: { test: 'defaults' } });
+      expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
+    });
+
+    it('await when a snapshot is available after default change', async () => {
+      const target = ghii(
+        Type.Object({
+          a: Type.Object({
+            test: Type.Union([Type.Literal('string'), Type.Literal('defaults')], {
+              default: 'defaults',
+            }),
+          }),
+        })
+      );
+
+      await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
+      target.snapshot({ a: { test: 'string' } });
+      await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
+
+      const fakeModule = await import('./fakeModule');
+      expect(fakeModule.default).toStrictEqual(1);
+      expect(target.history()).toHaveLength(2);
+      expect(target.latestVersion()).toBeDefined();
+      expect(target.history().reverse()[1].value).toStrictEqual({ a: { test: 'defaults' } });
+      expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
+    });
+
+    it('await when a snapshot is available and history not changed', async () => {
+      const target = ghii(
+        Type.Object({
+          a: Type.Object({
+            test: Type.Union([Type.Literal('string'), Type.Literal('defaults')], {
+              default: 'string',
+            }),
+          }),
+        })
+      );
+
+      await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
+      target.snapshot({ a: { test: 'string' } });
+      await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
+      target.snapshot({ a: { test: 'string' } });
+      await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
+
+      const fakeModule = await import('./fakeModule');
+      expect(fakeModule.default).toStrictEqual(1);
+      expect(target.history()).toHaveLength(1);
       expect(target.latestVersion()).toBeDefined();
       expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
     });

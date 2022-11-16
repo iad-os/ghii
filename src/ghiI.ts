@@ -1,7 +1,7 @@
 import { Static, TSchema } from '@sinclair/typebox';
 import { Value, ValueError } from '@sinclair/typebox/value';
 import { EventEmitter } from 'events';
-import { cloneDeep, merge } from 'lodash';
+import { cloneDeep, isEqual, merge } from 'lodash';
 import path from 'path';
 import { ValueOf } from 'type-fest';
 import TypedEventEmitter from './TypedEventEmitter';
@@ -86,7 +86,8 @@ export function ghii<O extends TSchema>(schema: O): GhiiInstance<O> {
   }
 
   function snapshot(newSnapshot?: Snapshot<O>) {
-    if (newSnapshot) {
+    const currentSnapshot = latestVersion()?.value;
+    if (newSnapshot && (!currentSnapshot || !isEqual(currentSnapshot, newSnapshot))) {
       versions.push({ meta: { timestamp: new Date() }, value: newSnapshot });
       if (versions.length === 1) events.emit('ghii:version:first', undefined);
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
