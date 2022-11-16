@@ -1,6 +1,7 @@
 import { isEqual } from 'lodash';
 import { fakeTimeoutLoader } from '../fakeLoaders';
-import Ghii, { ghii } from '../ghii';
+import Ghii, { ghii } from '../ghiI';
+import { Type } from '@sinclair/typebox';
 
 describe('Ghii Config', () => {
   beforeEach(() => {
@@ -12,182 +13,120 @@ describe('Ghii Config', () => {
 
   describe('base configs', () => {
     it('load default (valid) options', async () => {
-      type FooType = { prop: string };
-      type S3Type = { ciao: string };
-      const target = ghii<{
-        foo: FooType;
-        foo2: FooType;
-        s3: S3Type;
-      }>();
-
-      target
-        .section('foo', {
-          defaults: { prop: 'ciao' },
-          schema(Type) {
-            return Type.Object({
-              prop: Type.String(),
-            });
-          },
+      const target = ghii(
+        Type.Object({
+          foo: Type.Object({
+            prop1: Type.String({ default: 'prop1' }),
+          }),
+          foo2: Type.Object({
+            prop1: Type.String({ description: 'Another foo' }),
+          }),
         })
-        .section('foo2', {
-          defaults: { prop: 'ciao' },
-          schema(Type) {
-            return Type.Object({
-              prop: Type.String(),
-            });
-          },
-        })
-        .section('s3', {
-          schema: Type => Type.Object({ url: Type.String() }),
-          defaults: { ciao: 'world' },
-        })
-        .loader(async () => ({ s3: { url: 'ciao' } }));
+      ).loader(async () => ({ foo2: { prop1: 'prop1' } }));
       const result = await target.takeSnapshot();
       expect(result).toStrictEqual({
-        foo: { prop: 'ciao' },
-        foo2: { prop: 'ciao' },
-        s3: { ciao: 'world', url: 'ciao' },
-      });
-    });
-
-    it('loader (valid) options', async () => {
-      type FooType = { prop: string };
-      const target = ghii<{ foo: FooType }>();
-      target.section('foo', {
-        defaults: { prop: 'goodbye' },
-        schema(Type) {
-          return Type.Object({
-            prop: Type.String(),
-          });
-        },
-      });
-      target.loader(async () => ({ foo: { prop: 'ciao' } }));
-      const result = await target.takeSnapshot();
-      expect(result).toStrictEqual({ foo: { prop: 'ciao' } });
-    });
-
-    it('simple property (valid) options', async () => {
-      type FooType = 'a' | 'b';
-      const target = ghii<{ foo: FooType }>();
-      target.section('foo', {
-        defaults: 'a',
-        schema(Type) {
-          return Type.Union([Type.Literal('a'), Type.Literal('b')]);
-        },
-      });
-      target.loader(async () => ({ foo: 'b' }));
-      const result = await target.takeSnapshot();
-      expect(result).toStrictEqual({ foo: 'b' });
-    });
-
-    it('loader without defaults (valid) options', async () => {
-      type FooType = { prop: string };
-      const target = ghii<{ foo: FooType }>();
-      target.section('foo', {
-        schema(Type) {
-          return Type.Object({
-            prop: Type.String(),
-          });
-        },
-      });
-      target.loader(async () => ({ foo: { prop: 'ciao' } }));
-      const result = await target.takeSnapshot();
-      expect(result).toStrictEqual({ foo: { prop: 'ciao' } });
-    });
-
-    it('loader without defaults (valid) options', async () => {
-      type FooType = { prop: string };
-      const target = ghii<{ foo: FooType }>();
-      target.section('foo', {
-        schema(Type) {
-          return Type.Object({
-            prop: Type.String(),
-          });
-        },
-      });
-      target.loader(async () => ({ foo: { prop: 'ciao' } }));
-      const result = await target.takeSnapshot();
-      expect(result).toStrictEqual({ foo: { prop: 'ciao' } });
-    });
-    it('load default (invalid) options', () => {
-      type FooType = { prop: string };
-      const target = ghii<{ foo: FooType }>();
-      target.section('foo', {
-        defaults: { prop: 'goodbye' },
-        schema(Type) {
-          return Type.Object({
-            prop: Type.String({ maxLength: 10, minLength: 10 }),
-          });
-        },
-      });
-
-      return expect(target.takeSnapshot()).rejects.toMatchObject([{ path: '/prop', value: 'goodbye', section: 'foo' }]);
-    });
-
-    it('load loader (invalid) options', () => {
-      type FooType = { prop: string };
-      const target = ghii<{ foo: FooType }>();
-      target.section('foo', {
-        defaults: { prop: 'goodbye' },
-        schema(Type) {
-          return Type.Object({
-            prop: Type.String({ maxLength: 7, minLength: 7 }),
-          });
-        },
-      });
-      target.loader(async () => ({ foo: { prop: 'ciao' } }));
-      return expect(target.takeSnapshot()).rejects.toMatchObject([{ path: '/prop', value: 'ciao', section: 'foo' }]);
-    });
-
-    it('load loader (invalid) options', () => {
-      type FooType = { prop: string };
-      const target = ghii<{ foo: FooType }>();
-      target.section('foo', {
-        // defaults: { prop: 'goodbye' },
-        schema(Type) {
-          return Type.Object({
-            prop: Type.String({ maxLength: 3, minLength: 3 }),
-          });
-        },
-      });
-      target.loader(async () => ({ foo: { prop: 'ciao' } }));
-      return expect(target.takeSnapshot()).rejects.toMatchObject([{ path: '/prop', value: 'ciao', section: 'foo' }]);
-    });
-    it('load breaking change version', async () => {
-      type FooType = { prop: string };
-      const target = ghii<{ foo: FooType }>();
-      target.section('foo', {
-        breakingChange(old, current) {
-          const changed = !isEqual(old, current);
-          return changed;
-        },
-        schema(Type) {
-          return Type.Object({
-            prop: Type.String(),
-          });
-        },
-      });
-      target.loader(async () => ({ foo: { prop: 'ciao' } }));
-      await target.takeSnapshot();
-
-      return new Promise(resolve => {
-        target.loader(async () => ({ foo: { prop: 'hello' } }));
-        target.takeSnapshot();
-        target.on('ghii:version:breaking', ({ current, old, breakingSection }) => {
-          expect(current).not.toStrictEqual(old);
-          expect('foo').toStrictEqual(breakingSection);
-          resolve(true);
-        });
+        foo: { prop1: 'prop1' },
+        foo2: { prop1: 'prop1' },
       });
     });
   });
 
+  it('loader (valid) options', async () => {
+    const target = ghii(
+      Type.Object({
+        foo: Type.Object({
+          prop: Type.String({ default: 'goodbye' }),
+        }),
+      })
+    );
+    target.loader(async () => ({ foo: { prop: 'ciao' } }));
+    const result = await target.takeSnapshot();
+    expect(result).toStrictEqual({ foo: { prop: 'ciao' } });
+  });
+
+  it('simple property (valid) options', async () => {
+    const target = ghii(
+      Type.Object({
+        foo: Type.Union([Type.Literal('a'), Type.Literal('b')], { default: 'a' }),
+      })
+    );
+    target.loader(async () => ({ foo: 'b' }));
+    const result = await target.takeSnapshot();
+    expect(result).toStrictEqual({ foo: 'b' });
+  });
+
+  it('loader without defaults (valid) options', async () => {
+    const target = ghii(
+      Type.Object({
+        foo: Type.Object({
+          prop: Type.String(),
+        }),
+      })
+    );
+    target.loader(async () => ({ foo: { prop: 'ciao' } }));
+    const result = await target.takeSnapshot();
+    expect(result).toStrictEqual({ foo: { prop: 'ciao' } });
+  });
+
+  it('loader without defaults (valid) options', async () => {
+    const target = ghii(
+      Type.Object({
+        foo: Type.Object({
+          prop: Type.String(),
+        }),
+      })
+    );
+    target.loader(async () => ({ foo: { prop: 'ciao' } }));
+    const result = await target.takeSnapshot();
+    expect(result).toStrictEqual({ foo: { prop: 'ciao' } });
+  });
+  it('load default (invalid) options', () => {
+    const target = ghii(
+      Type.Object({
+        foo: Type.Object({
+          prop: Type.String({ maxLength: 10, minLength: 10, default: 'goodbye' }),
+        }),
+      })
+    );
+    return expect(target.takeSnapshot()).rejects.toMatchObject([{ path: '/foo/prop', value: 'goodbye' }]);
+  });
+
+  it('load loader (invalid) options', () => {
+    const target = ghii(
+      Type.Object({
+        foo: Type.Object({
+          prop: Type.String({ maxLength: 7, minLength: 7, default: 'goodbye' }),
+        }),
+      })
+    );
+    target.loader(async () => ({ foo: { prop: 'ciao' } }));
+    return expect(target.takeSnapshot()).rejects.toMatchObject([{ path: '/foo/prop', value: 'ciao' }]);
+  });
+
+  it('load loader (invalid) options', () => {
+    const target = ghii(
+      Type.Object({
+        foo: Type.Object({
+          prop: Type.String({ maxLength: 3, minLength: 3 }),
+        }),
+      })
+    );
+    target.loader(async () => ({ foo: { prop: 'ciao' } }));
+    return expect(target.takeSnapshot()).rejects.toMatchObject([{ path: '/foo/prop', value: 'ciao' }]);
+  });
+
   describe('history and version', () => {
     it('have empty history and latestVersion if no snapshot is taken', () => {
-      const target = Ghii<{ a: { test: 'string' | 'defaults' } }>().section('a', {
-        schema: Type => Type.Union([Type.Optional(Type.String()), Type.Undefined()]),
-        defaults: { test: 'defaults' },
-      });
+      const target = ghii(
+        Type.Object({
+          a: Type.Union([
+            Type.Object({
+              test: Type.Union([Type.Literal('defaults'), Type.Literal('string')], { default: 'defaults' }),
+            }),
+            Type.Undefined(),
+          ]),
+        })
+      );
 
       expect(target.history()).toStrictEqual([]);
       expect(target.latestVersion()).toBeUndefined();
@@ -195,22 +134,32 @@ describe('Ghii Config', () => {
     });
 
     it('have history and latestVersion if  snapshot is taken', () => {
-      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        schema: Type => Type.Union([Type.Optional(Type.String()), Type.Undefined()]),
-      });
+      const target = ghii(
+        Type.Object({
+          a: Type.Union([
+            Type.Object({
+              test: Type.Optional(Type.Union([Type.Literal('string')])),
+            }),
+            Type.Undefined(),
+          ]),
+        })
+      );
       target.snapshot({ a: { test: 'string' } });
       expect(target.history()).toHaveLength(1);
       expect(target.latestVersion()).toBeDefined();
       expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
     });
     it('await snapshot', async () => {
-      const target = Ghii<{ a: { test: 'string' | 'done' } }>()
-        .section('a', {
-          schema: Type => Type.Object({ test: Type.Optional(Type.String()) }),
-          defaults: { test: 'string' },
+      const target = ghii(
+        Type.Object({
+          a: Type.Union([
+            Type.Object({
+              test: Type.Optional(Type.Union([Type.Literal('string'), Type.Literal('done')])),
+            }),
+            Type.Undefined(),
+          ]),
         })
-        .loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
-
+      ).loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
       const firstPromise = target.waitForFirstSnapshot({}, __dirname, './fakeModule');
       jest.advanceTimersToNextTimer();
       await firstPromise;
@@ -220,9 +169,16 @@ describe('Ghii Config', () => {
     });
 
     it('await when a snapshot is available', async () => {
-      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        schema: Type => Type.Union([Type.Optional(Type.String()), Type.Undefined()]),
-      });
+      const target = ghii(
+        Type.Object({
+          a: Type.Union([
+            Type.Object({
+              test: Type.Optional(Type.Union([Type.Literal('string')])),
+            }),
+            Type.Undefined(),
+          ]),
+        })
+      );
       target.snapshot({ a: { test: 'string' } });
       await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
 
@@ -232,9 +188,16 @@ describe('Ghii Config', () => {
     });
 
     it('await when a snapshot is available', async () => {
-      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        schema: Type => Type.Union([Type.Optional(Type.String()), Type.Undefined()]),
-      });
+      const target = ghii(
+        Type.Object({
+          a: Type.Union([
+            Type.Object({
+              test: Type.Optional(Type.Union([Type.Literal('string')])),
+            }),
+            Type.Undefined(),
+          ]),
+        })
+      );
       target.snapshot({ a: { test: 'string' } });
       await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
       target.snapshot({ a: { test: 'string' } });
@@ -247,11 +210,16 @@ describe('Ghii Config', () => {
     });
 
     it('slow loader time out await snapshot', async () => {
-      const target = Ghii<{ a: { test: 'string' } }>()
-        .section('a', {
-          schema: Type => Type.Object({ test: Type.Optional(Type.String()) }),
+      const target = ghii(
+        Type.Object({
+          a: Type.Union([
+            Type.Object({
+              test: Type.Optional(Type.Union([Type.Literal('string')])),
+            }),
+            Type.Undefined(),
+          ]),
         })
-        .loader(() => fakeTimeoutLoader({}, 30));
+      ).loader(() => fakeTimeoutLoader({}, 30));
       try {
         const promise = target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
         jest.advanceTimersToNextTimer();
@@ -264,13 +232,18 @@ describe('Ghii Config', () => {
 
     it('a loader reject awaiting snapshot', async () => {
       const guardFn = jest.fn();
-      const target = Ghii<{ a: { test: 'string' } }>()
-        .section('a', {
-          schema: Type => Type.Object({ test: Type.Optional(Type.String()) }),
+      const target = ghii(
+        Type.Object({
+          a: Type.Union([
+            Type.Object({
+              test: Type.Optional(Type.Union([Type.Literal('string')])),
+            }),
+            Type.Undefined(),
+          ]),
         })
-        .loader(async () => {
-          throw new Error('test error');
-        });
+      ).loader(async () => {
+        throw new Error('test error');
+      });
       try {
         await target.waitForFirstSnapshot({ timeout: 20, onTimeout: guardFn }, __dirname, './fakeModule');
         fail("This line isn't reachable, without a snapshot!");
@@ -280,11 +253,16 @@ describe('Ghii Config', () => {
     });
     it('on awaiting snapshot timeout onTimeout is called', async () => {
       const guardFn = jest.fn();
-      const target = Ghii<{ a: { test: 'string' } }>()
-        .section('a', {
-          schema: Type => Type.Object({ test: Type.Optional(Type.String()) }),
+      const target = ghii(
+        Type.Object({
+          a: Type.Union([
+            Type.Object({
+              test: Type.Optional(Type.Union([Type.Literal('string')])),
+            }),
+            Type.Undefined(),
+          ]),
         })
-        .loader(() => fakeTimeoutLoader({ a: { test: 'string' } }, 30));
+      ).loader(() => fakeTimeoutLoader({ a: { test: 'string' } }, 30));
       try {
         const promise = target.waitForFirstSnapshot({ timeout: 10, onTimeout: guardFn }, __dirname, './fakeModule');
         jest.advanceTimersToNextTimer();
@@ -297,9 +275,16 @@ describe('Ghii Config', () => {
 
     it('await on missing module', async () => {
       const guardFn = jest.fn();
-      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        schema: Type => Type.Union([Type.Optional(Type.String()), Type.Undefined()]),
-      });
+      const target = ghii(
+        Type.Object({
+          a: Type.Union([
+            Type.Object({
+              test: Type.Optional(Type.Union([Type.Literal('string')])),
+            }),
+            Type.Undefined(),
+          ]),
+        })
+      );
       try {
         await target.waitForFirstSnapshot({ timeout: 0 }, './missingModule');
         fail("This line isn't reachable, without a snapshot!");
@@ -310,9 +295,16 @@ describe('Ghii Config', () => {
     });
     it('await on absolute module', async () => {
       const guardFn = jest.fn();
-      const target = Ghii<{ a: { test: 'string' } }>().section('a', {
-        schema: Type => Type.Union([Type.Optional(Type.String()), Type.Undefined()]),
-      });
+      const target = ghii(
+        Type.Object({
+          a: Type.Union([
+            Type.Object({
+              test: Type.Optional(Type.Union([Type.Literal('string')])),
+            }),
+            Type.Undefined(),
+          ]),
+        })
+      );
       await target.waitForFirstSnapshot({ timeout: 100, onTimeout: guardFn }, __dirname, './fakeModule');
     });
   });
