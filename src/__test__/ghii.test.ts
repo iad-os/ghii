@@ -1,6 +1,6 @@
 import { Type } from '@sinclair/typebox';
 import { fakeTimeoutLoader } from '../fakeLoaders';
-import Ghii, { ghii } from '../ghiI';
+import Ghii, { ghii } from '../ghii';
 
 describe('Ghii Config', () => {
   beforeEach(() => {
