@@ -1,7 +1,6 @@
-import { isEqual } from 'lodash';
+import { Type } from '@sinclair/typebox';
 import { fakeTimeoutLoader } from '../fakeLoaders';
 import Ghii, { ghii } from '../ghiI';
-import { Type } from '@sinclair/typebox';
 
 describe('Ghii Config', () => {
   beforeEach(() => {
