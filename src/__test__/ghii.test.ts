@@ -86,7 +86,7 @@ describe('Ghii Config', () => {
         }),
       })
     );
-    return expect(target.takeSnapshot()).rejects.toMatchObject([{ path: '/foo/prop', value: 'goodbye' }]);
+    return expect(target.takeSnapshot()).rejects.toMatchObject([{ instancePath: '/foo/prop' }]);
   });
 
   it('load loader (invalid) options', () => {
@@ -98,7 +98,7 @@ describe('Ghii Config', () => {
       })
     );
     target.loader(async () => ({ foo: { prop: 'ciao' } }));
-    return expect(target.takeSnapshot()).rejects.toMatchObject([{ path: '/foo/prop', value: 'ciao' }]);
+    return expect(target.takeSnapshot()).rejects.toMatchObject([{ instancePath: '/foo/prop' }]);
   });
 
   it('load loader (invalid) options', () => {
@@ -110,7 +110,42 @@ describe('Ghii Config', () => {
       })
     );
     target.loader(async () => ({ foo: { prop: 'ciao' } }));
-    return expect(target.takeSnapshot()).rejects.toMatchObject([{ path: '/foo/prop', value: 'ciao' }]);
+    return expect(target.takeSnapshot()).rejects.toMatchObject([{ instancePath: '/foo/prop' }]);
+  });
+  it('load format types', async () => {
+    const guardFn = jest.fn();
+    const target = ghii(
+      Type.Object({
+        foo: Type.Object({
+          email: Type.String({ format: 'email', default: '' }),
+        }),
+      })
+    ).loader(async () => ({ foo: { email: 'pippo@pippo.it' } }));
+    await target.waitForFirstSnapshot({ timeout: 10, onTimeout: guardFn }, __dirname, './fakeModule');
+    jest.advanceTimersToNextTimer();
+    expect(target.snapshot()).toStrictEqual({
+      foo: { email: 'pippo@pippo.it' },
+    });
+  });
+  it('load format types (invalid default)', async () => {
+    const target = ghii(
+      Type.Object({
+        foo: Type.Object({
+          email: Type.String({ format: 'email', default: '' }),
+        }),
+      })
+    );
+    return expect(target.takeSnapshot()).rejects.toMatchObject([{ instancePath: '/foo/email' }]);
+  });
+  it('load format types (invalid)', async () => {
+    const target = ghii(
+      Type.Object({
+        foo: Type.Object({
+          email: Type.String({ format: 'email', default: '' }),
+        }),
+      })
+    ).loader(async () => ({ foo: { email: '127.0.0.0' } }));
+    return expect(target.takeSnapshot()).rejects.toMatchObject([{ instancePath: '/foo/email' }]);
   });
 
   describe('history and version', () => {

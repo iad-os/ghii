@@ -1,5 +1,7 @@
 import { Static, TSchema, Type } from '@sinclair/typebox';
-import { Value, ValueError } from '@sinclair/typebox/value';
+import { Edit, Value } from '@sinclair/typebox/value';
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
 import { EventEmitter } from 'events';
 import { cloneDeep, isEqual, merge } from 'lodash';
 import path from 'path';
@@ -26,19 +28,28 @@ export type SnapshotVersion<O extends TSchema> = { meta: { timestamp: Date }; va
 
 export interface EventTypes<O extends TSchema> {
   'ghii:version:first': undefined;
-  'ghii:version:new': SnapshotVersion<O>;
+  'ghii:version:new': { value: SnapshotVersion<O>; diff: Edit[] };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface GhiiEmitter<O extends TSchema> extends TypedEventEmitter<EventTypes<O>> {}
+
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) | O): GhiiInstance<O> {
   const schema = typeof buildSchema === 'function' ? buildSchema(Type) : buildSchema;
+
+  const ajv = createAjv();
+  const validator = createValidator(schema);
 
   const loaders: Loader[] = [];
   const versions: SnapshotVersion<O>[] = [];
 
   const events = new EventEmitter() as unknown as GhiiEmitter<O>;
+
+  function createValidator(schema: O) {
+    const v = ajv.compile<O>(schema);
+    return (tested: unknown) => [v(tested), v.errors] as const;
+  }
 
   function loader(this: GhiiInstance<O>, loader: Loader) {
     loaders.push(loader);
@@ -55,12 +66,11 @@ export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) 
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function validate(result: Snapshot<O>) {
-    let validationsError: ValueError[] = [];
-
-    if (!Value.Check(schema, result)) {
-      validationsError = [...Value.Errors(schema, result)];
+    const [isValid, errors] = validator(result);
+    if (!isValid) {
+      return errors;
     }
-    return validationsError;
+    return undefined;
   }
 
   async function takeSnapshot(): Promise<Snapshot<O>> {
@@ -71,7 +81,7 @@ export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) 
     const result: Snapshot<O> = merge({}, defaults, ...loaded);
 
     const validationErrors = validate(result);
-    if (validationErrors.length) throw validationErrors;
+    if (validationErrors) throw validationErrors;
 
     snapshot(result);
 
@@ -93,7 +103,9 @@ export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) 
       versions.push({ meta: { timestamp: new Date() }, value: newSnapshot });
       if (versions.length === 1) events.emit('ghii:version:first', undefined);
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      events.emit('ghii:version:new', latestVersion()!);
+      const lastVersion = latestVersion()!;
+      const diff = currentSnapshot ? Value.Diff(currentSnapshot, lastVersion) : [];
+      events.emit('ghii:version:new', { value: lastVersion, diff });
     }
     return latestVersion()?.value ?? prepareDefaults();
   }
@@ -145,4 +157,23 @@ function _tryImport(moduleToLoad: string[], resolve: (value?: void) => void, rej
       resolve(module);
     })
     .catch(reason => reject(reason));
+}
+
+function createAjv() {
+  return addFormats(new Ajv({}), [
+    'date-time',
+    'time',
+    'date',
+    'email',
+    'hostname',
+    'ipv4',
+    'ipv6',
+    'uri',
+    'uri-reference',
+    'uuid',
+    'uri-template',
+    'json-pointer',
+    'relative-json-pointer',
+    'regex',
+  ]).addKeyword({ type: 'null', keyword: 'typeOf' });
 }
