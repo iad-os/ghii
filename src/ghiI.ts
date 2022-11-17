@@ -36,7 +36,7 @@ export function ghii<O extends TSchema>(schema: O): GhiiInstance<O> {
   const loaders: Loader[] = [];
   const versions: SnapshotVersion<O>[] = [];
 
-  const events = (new EventEmitter() as unknown) as GhiiEmitter<O>;
+  const events = new EventEmitter() as unknown as GhiiEmitter<O>;
 
   function loader(this: GhiiInstance<O>, loader: Loader) {
     loaders.push(loader);
