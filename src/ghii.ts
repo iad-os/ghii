@@ -1,4 +1,4 @@
-import { Static, TSchema } from '@sinclair/typebox';
+import { Static, TSchema, Type } from '@sinclair/typebox';
 import { Value, ValueError } from '@sinclair/typebox/value';
 import { EventEmitter } from 'events';
 import { cloneDeep, isEqual, merge } from 'lodash';
@@ -32,7 +32,9 @@ export interface EventTypes<O extends TSchema> {
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface GhiiEmitter<O extends TSchema> extends TypedEventEmitter<EventTypes<O>> {}
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export function ghii<O extends TSchema>(schema: O): GhiiInstance<O> {
+export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) | O): GhiiInstance<O> {
+  const schema = typeof buildSchema === 'function' ? buildSchema(Type) : buildSchema;
+
   const loaders: Loader[] = [];
   const versions: SnapshotVersion<O>[] = [];
 

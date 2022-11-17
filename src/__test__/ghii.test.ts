@@ -12,13 +12,13 @@ describe('Ghii Config', () => {
 
   describe('base configs', () => {
     it('load default (valid) options', async () => {
-      const target = ghii(
-        Type.Object({
-          foo: Type.Object({
-            prop1: Type.String({ default: 'prop1' }),
+      const target = ghii(T =>
+        T.Object({
+          foo: T.Object({
+            prop1: T.String({ default: 'prop1' }),
           }),
-          foo2: Type.Object({
-            prop1: Type.String({ description: 'Another foo' }),
+          foo2: T.Object({
+            prop1: T.String({ description: 'Another foo' }),
           }),
         })
       ).loader(async () => ({ foo2: { prop1: 'prop1' } }));
@@ -29,7 +29,6 @@ describe('Ghii Config', () => {
       });
     });
   });
-
   it('loader (valid) options', async () => {
     const target = ghii(
       Type.Object({
@@ -166,7 +165,24 @@ describe('Ghii Config', () => {
       expect(target.latestVersion()).toBeDefined();
       expect(target.snapshot()).toStrictEqual({ a: { test: 'done' } });
     });
-
+    it('await snapshot (without options)', async () => {
+      const target = ghii(
+        Type.Object({
+          a: Type.Union([
+            Type.Object({
+              test: Type.Optional(Type.Union([Type.Literal('string'), Type.Literal('done')])),
+            }),
+            Type.Undefined(),
+          ]),
+        })
+      ).loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
+      const firstPromise = target.waitForFirstSnapshot(undefined, __dirname, './fakeModule');
+      jest.advanceTimersToNextTimer();
+      await firstPromise;
+      expect(target.history()).toHaveLength(1);
+      expect(target.latestVersion()).toBeDefined();
+      expect(target.snapshot()).toStrictEqual({ a: { test: 'done' } });
+    });
     it('await when a snapshot is available', async () => {
       const target = ghii(
         Type.Object({
