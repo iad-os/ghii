@@ -104,7 +104,7 @@ export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) 
       if (versions.length === 1) events.emit('ghii:version:first', undefined);
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const lastVersion = latestVersion()!;
-      const diff = currentSnapshot ? Value.Diff(currentSnapshot, lastVersion) : [];
+      const diff = currentSnapshot ? Value.Diff(currentSnapshot, lastVersion.value) : [];
       events.emit('ghii:version:new', { value: lastVersion, diff });
     }
     return latestVersion()?.value ?? prepareDefaults();
