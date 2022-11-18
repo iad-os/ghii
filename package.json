@@ -1,6 +1,6 @@
 {
   "name": "@ghii/ghii-next",
-  "version": "1.0.9-beta",
+  "version": "1.0.10-beta",
   "description": "A Funny configuration manager ",
   "maintainers": [
     {
@@ -95,9 +95,11 @@
     "typescript": "^4.9.3"
   },
   "dependencies": {
-    "@sinclair/typebox": "^0.25.8",
     "ajv": "^8.11.2",
     "ajv-formats": "^2.1.1",
     "lodash": "^4.17.21"
+  },
+  "peerDependencies": {
+    "@sinclair/typebox": "=0.25.8"
   }
 }
