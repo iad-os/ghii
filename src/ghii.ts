@@ -60,10 +60,6 @@ export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) 
     return Promise.all(loaders.map(loader => loader()));
   }
 
-  function prepareDefaults(): Snapshot<O> {
-    return Value.Create(schema);
-  }
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function validate(result: Snapshot<O>) {
     const [isValid, errors] = validator(result);
@@ -74,11 +70,9 @@ export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) 
   }
 
   async function takeSnapshot(): Promise<Snapshot<O>> {
-    const defaults = prepareDefaults();
-
     const loaded = await runLoaders(loaders);
 
-    const result: Snapshot<O> = merge({}, defaults, ...loaded);
+    const result: Snapshot<O> = merge({}, ...loaded);
 
     const validationErrors = validate(result);
     if (validationErrors) throw validationErrors;
@@ -107,7 +101,14 @@ export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) 
       const diff = currentSnapshot ? Value.Diff(currentSnapshot, lastVersion.value) : [];
       events.emit('ghii:version:new', { value: lastVersion, diff });
     }
-    return latestVersion()?.value ?? prepareDefaults();
+    if (currentSnapshot) {
+      return currentSnapshot;
+    } else if (!newSnapshot) {
+      // take default if valid
+      const defaults: Snapshot<O> = {};
+      validate(defaults);
+      return defaults;
+    }
   }
 
   function waitForFirstSnapshot(options?: { timeout?: number; onTimeout?: () => void }, ...moduleToLoad: string[]) {
@@ -160,7 +161,7 @@ function _tryImport(moduleToLoad: string[], resolve: (value?: void) => void, rej
 }
 
 function createAjv() {
-  return addFormats(new Ajv({}), [
+  return addFormats(new Ajv({ useDefaults: true }), [
     'date-time',
     'time',
     'date',

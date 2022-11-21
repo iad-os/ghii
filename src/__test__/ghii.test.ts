@@ -14,9 +14,12 @@ describe('Ghii Config', () => {
     it('load default (valid) options', async () => {
       const target = ghii(T =>
         T.Object({
-          foo: T.Object({
-            prop1: T.String({ default: 'prop1' }),
-          }),
+          foo: T.Object(
+            {
+              prop1: T.String(),
+            },
+            { default: { prop1: 'prop1' } }
+          ),
           foo2: T.Object({
             prop1: T.String({ description: 'Another foo' }),
           }),
@@ -81,9 +84,12 @@ describe('Ghii Config', () => {
   it('load default (invalid) options', () => {
     const target = ghii(
       Type.Object({
-        foo: Type.Object({
-          prop: Type.String({ maxLength: 10, minLength: 10, default: 'goodbye' }),
-        }),
+        foo: Type.Object(
+          {
+            prop: Type.String({ maxLength: 10, minLength: 10 }),
+          },
+          { default: { prop: 'goodbye' } }
+        ),
       })
     );
     return expect(target.takeSnapshot()).rejects.toMatchObject([{ instancePath: '/foo/prop' }]);
@@ -130,9 +136,12 @@ describe('Ghii Config', () => {
   it('load format types (invalid default)', async () => {
     const target = ghii(
       Type.Object({
-        foo: Type.Object({
-          email: Type.String({ format: 'email', default: '' }),
-        }),
+        foo: Type.Object(
+          {
+            email: Type.String({ format: 'email', default: '' }),
+          },
+          { default: { email: '' } }
+        ),
       })
     );
     return expect(target.takeSnapshot()).rejects.toMatchObject([{ instancePath: '/foo/email' }]);
@@ -147,17 +156,30 @@ describe('Ghii Config', () => {
     ).loader(async () => ({ foo: { email: '127.0.0.0' } }));
     return expect(target.takeSnapshot()).rejects.toMatchObject([{ instancePath: '/foo/email' }]);
   });
+  it('load without default and loader', () => {
+    const schema = Type.Object({
+      foo: Type.Object({
+        prop: Type.String({ maxLength: 7, minLength: 7, default: 'ghenghi' }),
+      }),
+    });
+
+    const target = ghii(schema);
+    return expect(target.takeSnapshot()).rejects.toMatchObject([{ instancePath: '' }]);
+  });
 
   describe('history and version', () => {
     it('have empty history and latestVersion if no snapshot is taken', () => {
       const target = ghii(
         Type.Object({
-          a: Type.Union([
-            Type.Object({
-              test: Type.Union([Type.Literal('defaults'), Type.Literal('string')], { default: 'defaults' }),
-            }),
-            Type.Undefined(),
-          ]),
+          a: Type.Union(
+            [
+              Type.Object({
+                test: Type.Union([Type.Literal('defaults'), Type.Literal('string')]),
+              }),
+              Type.Undefined(),
+            ],
+            { default: { test: 'defaults' } }
+          ),
         })
       );
 
@@ -265,11 +287,12 @@ describe('Ghii Config', () => {
     it('await when a snapshot is available after default change', async () => {
       const target = ghii(
         Type.Object({
-          a: Type.Object({
-            test: Type.Union([Type.Literal('string'), Type.Literal('defaults')], {
-              default: 'defaults',
-            }),
-          }),
+          a: Type.Object(
+            {
+              test: Type.Union([Type.Literal('string'), Type.Literal('defaults')]),
+            },
+            { default: { test: 'defaults' } }
+          ),
         })
       );
 
@@ -288,11 +311,12 @@ describe('Ghii Config', () => {
     it('await when a snapshot is available and history not changed', async () => {
       const target = ghii(
         Type.Object({
-          a: Type.Object({
-            test: Type.Union([Type.Literal('string'), Type.Literal('defaults')], {
-              default: 'string',
-            }),
-          }),
+          a: Type.Object(
+            {
+              test: Type.Union([Type.Literal('string'), Type.Literal('defaults')]),
+            },
+            { default: { test: 'string' } }
+          ),
         })
       );
 
@@ -397,12 +421,15 @@ describe('Ghii Config', () => {
       const guardFn = jest.fn();
       const target = ghii(
         Type.Object({
-          a: Type.Union([
-            Type.Object({
-              test: Type.Optional(Type.Union([Type.Literal('string')])),
-            }),
-            Type.Undefined(),
-          ]),
+          a: Type.Union(
+            [
+              Type.Object({
+                test: Type.Optional(Type.Union([Type.Literal('string')])),
+              }),
+              Type.Undefined(),
+            ],
+            { default: { test: 'string' } }
+          ),
         })
       );
       await target.waitForFirstSnapshot({ timeout: 100, onTimeout: guardFn }, __dirname, './fakeModule');
