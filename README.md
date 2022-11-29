@@ -1,3 +1,3 @@
-# GHII-NEXT
+# GHII
 
 TBC
