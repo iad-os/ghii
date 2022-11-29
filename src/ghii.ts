@@ -1,68 +1,54 @@
+import { Static, TSchema, Type } from '@sinclair/typebox';
+import { Edit, Value } from '@sinclair/typebox/value';
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
 import { EventEmitter } from 'events';
-import Joi from 'joi';
-import { cloneDeep, get, map, merge, reduce } from 'lodash';
+import { cloneDeep, isEqual, merge } from 'lodash';
 import path from 'path';
-import { PartialDeep, ValueOf } from 'type-fest';
+import { ValueOf } from 'type-fest';
 import TypedEventEmitter from './TypedEventEmitter';
-export interface Topic<T> {
-  defaults?: PartialDeep<T> | T;
-  validator: (joi: typeof Joi) => Joi.Schema;
-  shouldKill?: (old: Snapshot<T>, current: Snapshot<T>) => boolean;
-}
 
 export type Loader = () => Promise<{ [key: string]: unknown }>;
 
-export type GhiiInstance<O extends { [P in keyof O]: O[P] }> = {
-  section: <K extends keyof O>(this: GhiiInstance<O>, name: K, topic: Topic<O[K]>) => GhiiInstance<O>;
+export type GhiiInstance<O extends TSchema> = {
   loader: (this: GhiiInstance<O>, loader: Loader) => GhiiInstance<O>;
-  takeSnapshot: () => Promise<{ [key in keyof O]: O[key] }>;
+  takeSnapshot: () => Promise<Snapshot<O>>;
   history: () => SnapshotVersion<O>[];
-  snapshot: (newSnapshot?: Snapshot<O>) => O;
+  snapshot: (newSnapshot?: Snapshot<O>) => Snapshot<O>;
   latestVersion: () => SnapshotVersion<O> | undefined;
   waitForFirstSnapshot: (
     options?: { timeout?: number; onTimeout?: () => void },
     ...moduleToLoad: string[]
-  ) => Promise<O>;
+  ) => Promise<Snapshot<O>>;
   on: ValueOf<Pick<GhiiEmitter<O>, 'on'>>;
   once: ValueOf<Pick<GhiiEmitter<O>, 'once'>>;
 };
-export type Snapshot<O extends { [P in keyof O]: O[P] }> = { [P in keyof O]: O[P] };
-export type Sections<O extends { [P in keyof O]: O[P] }> = { [key in keyof O]?: Topic<O[key]> };
-export type ShouldKill<O extends { [P in keyof O]: O[P] }> = {
-  [key in keyof O]?: (old: Snapshot<O[key]>, current: Snapshot<O[key]>) => boolean;
-};
-export type Validator<O extends { [P in keyof O]: O[P] }> = { [key in keyof O]?: Joi.Schema };
-export type SnapshotVersion<O extends { [P in keyof O]: O[P] }> = { meta: { timestamp: Date }; value: Snapshot<O> };
+export type Snapshot<O extends TSchema> = Static<O>;
+export type SnapshotVersion<O extends TSchema> = { meta: { timestamp: Date }; value: Snapshot<O> };
 
-export interface EventTypes<O> {
+export interface EventTypes<O extends TSchema> {
   'ghii:version:first': undefined;
-  'ghii:version:new': SnapshotVersion<O>;
-  'ghii:shouldkill': {
-    old: Snapshot<PartialDeep<O>>;
-    current: Snapshot<PartialDeep<O>>;
-    section: keyof Snapshot<O>;
-  };
+  'ghii:version:new': { value: SnapshotVersion<O>; diff: Edit[] };
 }
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface GhiiEmitter<O> extends TypedEventEmitter<EventTypes<O>> {}
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
-  type ObjectKeys = keyof O;
 
-  const sections: Sections<O> = {};
-  const validators: Validator<O> = {};
-  const shouldKills: ShouldKill<O> = {};
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface GhiiEmitter<O extends TSchema> extends TypedEventEmitter<EventTypes<O>> {}
+
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) | O): GhiiInstance<O> {
+  const schema = typeof buildSchema === 'function' ? buildSchema(Type) : buildSchema;
+
+  const ajv = createAjv();
+  const validator = createValidator(schema);
+
   const loaders: Loader[] = [];
   const versions: SnapshotVersion<O>[] = [];
 
-  const events = (new EventEmitter() as unknown) as GhiiEmitter<O>;
-  function section<K extends ObjectKeys>(this: GhiiInstance<O>, name: K, topic: Topic<O[K]>): ReturnType<typeof ghii> {
-    sections[name] = topic;
-    validators[name] = topic.validator(Joi);
-    shouldKills[name] = (old, current) => {
-      return topic.shouldKill ? topic.shouldKill(old, current) : false;
-    };
-    return this;
+  const events = new EventEmitter() as unknown as GhiiEmitter<O>;
+
+  function createValidator(schema: O) {
+    const v = ajv.compile<O>(schema);
+    return (tested: unknown) => [v(tested), v.errors] as const;
   }
 
   function loader(this: GhiiInstance<O>, loader: Loader) {
@@ -74,67 +60,24 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
     return Promise.all(loaders.map(loader => loader()));
   }
 
-  function prepareDefaults(sections: Sections<O>): Snapshot<O> {
-    return reduce(
-      sections,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (acc: any, value, key) => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        if (!value!.defaults) return acc;
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        acc[key] = value!.defaults;
-        return acc;
-      },
-      {} as Snapshot<O>
-    );
-  }
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async function validate(validators: { [key in ObjectKeys]?: Joi.Schema }, result: any) {
-    const validation = await Promise.allSettled(
-      map(
-        validators,
-        (validator, key) =>
-          new Promise((resolve, reject) => {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            validator!.validateAsync(result[key]).then(
-              value => {
-                resolve({ key, err: false, value });
-              },
-              reason => {
-                reject({ key, err: true, reason });
-              }
-            );
-          })
-      )
-    );
-    return validation.filter(promise => promise.status === 'rejected');
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function shouldKillFn(sk: typeof shouldKills, old: SnapshotVersion<O>, current: SnapshotVersion<O>) {
-    map(sk, (fn, key) => {
-      const oldSection = get(old.value, key);
-      const currentSection = get(current.value, key);
-      const result = fn ? fn(oldSection, currentSection) : false;
-      result && events.emit('ghii:shouldkill', { current: currentSection, old: oldSection, section: key as keyof O });
-    });
+  function validate(result: Snapshot<O>) {
+    const [isValid, errors] = validator(result);
+    if (!isValid) {
+      return errors;
+    }
+    return undefined;
   }
 
   async function takeSnapshot(): Promise<Snapshot<O>> {
-    const defaults = prepareDefaults(sections);
-
     const loaded = await runLoaders(loaders);
 
-    const result: O = merge({}, defaults, ...loaded);
-    const validationErrors = await validate(validators, result);
-    if (validationErrors.length) throw validationErrors;
-    snapshot(result);
+    const result: Snapshot<O> = merge({}, ...loaded);
 
-    if (versions && versions.length > 1) {
-      const [current, old] = versions.reverse();
-      shouldKillFn(shouldKills, old, current);
-    }
+    const validationErrors = validate(result);
+    if (validationErrors) throw validationErrors;
+
+    snapshot(result);
 
     return result;
   }
@@ -149,19 +92,29 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
   }
 
   function snapshot(newSnapshot?: Snapshot<O>) {
-    if (newSnapshot) {
+    const currentSnapshot = latestVersion()?.value;
+    if (newSnapshot && (!currentSnapshot || !isEqual(currentSnapshot, newSnapshot))) {
       versions.push({ meta: { timestamp: new Date() }, value: newSnapshot });
       if (versions.length === 1) events.emit('ghii:version:first', undefined);
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      events.emit('ghii:version:new', latestVersion()!);
+      const lastVersion = latestVersion()!;
+      const diff = currentSnapshot ? Value.Diff(currentSnapshot, lastVersion.value) : [];
+      events.emit('ghii:version:new', { value: lastVersion, diff });
     }
-    return latestVersion()?.value ?? prepareDefaults(sections);
+    if (currentSnapshot) {
+      return currentSnapshot;
+    } else if (!newSnapshot) {
+      // take default if valid
+      const defaults: Snapshot<O> = {};
+      validate(defaults);
+      return defaults;
+    }
   }
 
   function waitForFirstSnapshot(options?: { timeout?: number; onTimeout?: () => void }, ...moduleToLoad: string[]) {
     const { timeout = 30000, onTimeout } = options || {};
 
-    return new Promise<O>((resolve, reject) => {
+    return new Promise<Snapshot<O>>((resolve, reject) => {
       if (latestVersion()) {
         _tryImport(
           moduleToLoad,
@@ -186,7 +139,6 @@ export function ghii<O extends { [P in keyof O]: O[P] }>(): GhiiInstance<O> {
   }
 
   return {
-    section,
     loader,
     takeSnapshot,
     history,
@@ -206,4 +158,23 @@ function _tryImport(moduleToLoad: string[], resolve: (value?: void) => void, rej
       resolve(module);
     })
     .catch(reason => reject(reason));
+}
+
+function createAjv() {
+  return addFormats(new Ajv({ useDefaults: true }), [
+    'date-time',
+    'time',
+    'date',
+    'email',
+    'hostname',
+    'ipv4',
+    'ipv6',
+    'uri',
+    'uri-reference',
+    'uuid',
+    'uri-template',
+    'json-pointer',
+    'relative-json-pointer',
+    'regex',
+  ]).addKeyword({ type: 'null', keyword: 'typeOf' });
 }
