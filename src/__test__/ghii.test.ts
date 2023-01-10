@@ -222,6 +222,47 @@ describe('Ghii Config', () => {
       expect(target.latestVersion()).toBeDefined();
       expect(target.snapshot()).toStrictEqual({ a: { test: 'done' } });
     });
+    it('await snapshot (dynamic import)', async () => {
+      const target = ghii(
+        Type.Object({
+          a: Type.Union([
+            Type.Object({
+              test: Type.Optional(Type.Union([Type.Literal('string'), Type.Literal('done')])),
+            }),
+            Type.Undefined(),
+          ]),
+        })
+      ).loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
+      const firstPromise = target.waitForFirstSnapshot({}, __dirname, './fakeModule');
+      jest.advanceTimersToNextTimer();
+      await firstPromise;
+      expect(target.history()).toHaveLength(1);
+      expect(target.latestVersion()).toBeDefined();
+      expect(target.snapshot()).toStrictEqual({ a: { test: 'done' } });
+    });
+    it('await snapshot (callback)', async () => {
+      const target = ghii(
+        Type.Object({
+          a: Type.Union([
+            Type.Object({
+              test: Type.Optional(Type.Union([Type.Literal('string'), Type.Literal('done')])),
+            }),
+            Type.Undefined(),
+          ]),
+        })
+      ).loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
+      const firstPromise = target.waitForFirstSnapshot({
+        async onFirstSnapshot() {
+          const v = await import('./fakeModule');
+          expect(v.default).toBeGreaterThan(0);
+        },
+      });
+      jest.advanceTimersToNextTimer();
+      await firstPromise;
+      expect(target.history()).toHaveLength(1);
+      expect(target.latestVersion()).toBeDefined();
+      expect(target.snapshot()).toStrictEqual({ a: { test: 'done' } });
+    });
     it('await snapshot (without options)', async () => {
       const target = ghii(
         Type.Object({
@@ -240,7 +281,7 @@ describe('Ghii Config', () => {
       expect(target.latestVersion()).toBeDefined();
       expect(target.snapshot()).toStrictEqual({ a: { test: 'done' } });
     });
-    it('await when a snapshot is available', async () => {
+    it('await when a snapshot is available (with callback)', async () => {
       const target = ghii(
         Type.Object({
           a: Type.Union([
@@ -252,7 +293,12 @@ describe('Ghii Config', () => {
         })
       );
       target.snapshot({ a: { test: 'string' } });
-      await target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
+      await target.waitForFirstSnapshot({
+        timeout: 10,
+        async onFirstSnapshot() {
+          return;
+        },
+      });
 
       expect(target.history()).toHaveLength(1);
       expect(target.latestVersion()).toBeDefined();
@@ -308,6 +354,39 @@ describe('Ghii Config', () => {
       expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
     });
 
+    it('await when a snapshot is available after default change (callback)', async () => {
+      const target = ghii(
+        Type.Object({
+          a: Type.Object(
+            {
+              test: Type.Union([Type.Literal('string'), Type.Literal('defaults')]),
+            },
+            { default: { test: 'defaults' } }
+          ),
+        })
+      );
+
+      await target.waitForFirstSnapshot({
+        timeout: 10,
+        async onFirstSnapshot() {
+          return;
+        },
+      });
+      target.snapshot({ a: { test: 'string' } });
+      await target.waitForFirstSnapshot({
+        timeout: 10,
+        async onFirstSnapshot() {
+          return;
+        },
+      });
+
+      const fakeModule = await import('./fakeModule');
+      expect(fakeModule.default).toStrictEqual(1);
+      expect(target.history()).toHaveLength(2);
+      expect(target.latestVersion()).toBeDefined();
+      expect(target.history().reverse()[1].value).toStrictEqual({ a: { test: 'defaults' } });
+      expect(target.snapshot()).toStrictEqual({ a: { test: 'string' } });
+    });
     it('await when a snapshot is available and history not changed', async () => {
       const target = ghii(
         Type.Object({
