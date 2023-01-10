@@ -17,7 +17,11 @@ export type GhiiInstance<O extends TSchema> = {
   snapshot: (newSnapshot?: Snapshot<O>) => Snapshot<O>;
   latestVersion: () => SnapshotVersion<O> | undefined;
   waitForFirstSnapshot: (
-    options?: { timeout?: number; onTimeout?: () => void },
+    options?: {
+      timeout?: number;
+      onTimeout?: () => void;
+      onFirstSnapshot?: (firstSnapshot: Snapshot<O>) => Promise<void>;
+    },
     ...moduleToLoad: string[]
   ) => Promise<Snapshot<O>>;
   on: ValueOf<Pick<GhiiEmitter<O>, 'on'>>;
@@ -115,16 +119,16 @@ export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) 
     options?: {
       timeout?: number;
       onTimeout?: () => void;
-      onFirstSnapshot?: (firstSnapshot: Snapshot<O>) => Promise<void> | void;
+      onFirstSnapshot?: (firstSnapshot: Snapshot<O>) => Promise<void>;
     },
     ...moduleToLoad: string[]
   ) {
     const { timeout = 30000, onTimeout, onFirstSnapshot } = options || {};
 
-    return new Promise<Snapshot<O>>(async (resolve, reject) => {
+    return new Promise<Snapshot<O>>((resolve, reject) => {
       if (latestVersion()) {
         if (onFirstSnapshot !== undefined) {
-          await onFirstSnapshot(snapshot());
+          onFirstSnapshot(snapshot());
           resolve(snapshot());
         } else if (moduleToLoad.length) {
           _tryImport(
@@ -139,7 +143,7 @@ export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) 
       }
       takeSnapshot().then(async snapshot => {
         if (onFirstSnapshot !== undefined) {
-          await onFirstSnapshot(snapshot);
+          onFirstSnapshot(snapshot);
           resolve(snapshot);
         } else if (moduleToLoad.length) {
           _tryImport(moduleToLoad, () => resolve(snapshot), reject);

@@ -68,10 +68,7 @@
         "lines": 95,
         "statements": 95
       }
-    },
-    "collectCoverageFrom": [
-      "src/*.{js,ts}"
-    ]
+    }
   },
   "devDependencies": {
     "@types/jest": "^29.2.3",
