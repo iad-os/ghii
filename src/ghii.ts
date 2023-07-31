@@ -3,7 +3,7 @@ import { Edit, Value } from '@sinclair/typebox/value';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import { EventEmitter } from 'events';
-import { cloneDeep, isEqual, merge } from 'lodash';
+import { cloneDeep, isEqual, merge } from 'lodash-es';
 import path from 'node:path';
 import { ValueOf } from 'type-fest';
 import type TypedEventEmitter from './TypedEventEmitter';
