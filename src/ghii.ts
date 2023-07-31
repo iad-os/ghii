@@ -2,11 +2,11 @@ import { Static, TSchema, Type } from '@sinclair/typebox';
 import { Edit, Value } from '@sinclair/typebox/value';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { EventEmitter, on } from 'events';
+import { EventEmitter } from 'events';
 import { cloneDeep, isEqual, merge } from 'lodash';
-import path from 'path';
+import path from 'node:path';
 import { ValueOf } from 'type-fest';
-import TypedEventEmitter from './TypedEventEmitter';
+import type TypedEventEmitter from './TypedEventEmitter';
 
 export type Loader = () => Promise<{ [key: string]: unknown }>;
 

@@ -1,10 +1,13 @@
 import { Type } from '@sinclair/typebox';
+import { fail } from 'node:assert';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { fakeTimeoutLoader } from '../fakeLoaders';
 import Ghii, { ghii } from '../ghii';
 
 describe('Ghii Config', () => {
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
   });
   it('Ghii is instantiable', () => {
     expect(Ghii).toBeDefined();
@@ -119,7 +122,7 @@ describe('Ghii Config', () => {
     return expect(target.takeSnapshot()).rejects.toMatchObject([{ instancePath: '/foo/prop' }]);
   });
   it('load format types', async () => {
-    const guardFn = jest.fn();
+    const guardFn = vi.fn();
     const target = ghii(
       Type.Object({
         foo: Type.Object({
@@ -128,7 +131,7 @@ describe('Ghii Config', () => {
       })
     ).loader(async () => ({ foo: { email: 'pippo@pippo.it' } }));
     await target.waitForFirstSnapshot({ timeout: 10, onTimeout: guardFn }, __dirname, './fakeModule');
-    jest.advanceTimersToNextTimer();
+    vi.advanceTimersToNextTimer();
     expect(target.snapshot()).toStrictEqual({
       foo: { email: 'pippo@pippo.it' },
     });
@@ -216,7 +219,7 @@ describe('Ghii Config', () => {
         })
       ).loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
       const firstPromise = target.waitForFirstSnapshot({}, __dirname, './fakeModule');
-      jest.advanceTimersToNextTimer();
+      vi.advanceTimersToNextTimer();
       await firstPromise;
       expect(target.history()).toHaveLength(1);
       expect(target.latestVersion()).toBeDefined();
@@ -234,7 +237,7 @@ describe('Ghii Config', () => {
         })
       ).loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
       const firstPromise = target.waitForFirstSnapshot({}, __dirname, './fakeModule');
-      jest.advanceTimersToNextTimer();
+      vi.advanceTimersToNextTimer();
       await firstPromise;
       expect(target.history()).toHaveLength(1);
       expect(target.latestVersion()).toBeDefined();
@@ -257,7 +260,7 @@ describe('Ghii Config', () => {
           expect(v.default).toBeGreaterThan(0);
         },
       });
-      jest.advanceTimersToNextTimer();
+      vi.advanceTimersToNextTimer();
       await firstPromise;
       expect(target.history()).toHaveLength(1);
       expect(target.latestVersion()).toBeDefined();
@@ -275,7 +278,7 @@ describe('Ghii Config', () => {
         })
       ).loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
       const firstPromise = target.waitForFirstSnapshot(undefined, __dirname, './fakeModule');
-      jest.advanceTimersToNextTimer();
+      vi.advanceTimersToNextTimer();
       await firstPromise;
       expect(target.history()).toHaveLength(1);
       expect(target.latestVersion()).toBeDefined();
@@ -425,7 +428,7 @@ describe('Ghii Config', () => {
       ).loader(() => fakeTimeoutLoader({}, 30));
       try {
         const promise = target.waitForFirstSnapshot({ timeout: 10 }, __dirname, './fakeModule');
-        jest.advanceTimersToNextTimer();
+        vi.advanceTimersToNextTimer();
         await promise;
         fail("This line isn't reachable, without a snapshot!");
       } catch (err) {
@@ -434,7 +437,7 @@ describe('Ghii Config', () => {
     });
 
     it('a loader reject awaiting snapshot', async () => {
-      const guardFn = jest.fn();
+      const guardFn = vi.fn();
       const target = ghii(
         Type.Object({
           a: Type.Union([
@@ -455,7 +458,7 @@ describe('Ghii Config', () => {
       }
     });
     it('on awaiting snapshot timeout onTimeout is called', async () => {
-      const guardFn = jest.fn();
+      const guardFn = vi.fn();
       const target = ghii(
         Type.Object({
           a: Type.Union([
@@ -468,7 +471,7 @@ describe('Ghii Config', () => {
       ).loader(() => fakeTimeoutLoader({ a: { test: 'string' } }, 30));
       try {
         const promise = target.waitForFirstSnapshot({ timeout: 10, onTimeout: guardFn }, __dirname, './fakeModule');
-        jest.advanceTimersToNextTimer();
+        vi.advanceTimersToNextTimer();
         await promise;
         fail("This line isn't reachable, without a snapshot!");
       } catch (err) {
@@ -477,7 +480,7 @@ describe('Ghii Config', () => {
     });
 
     it('await on missing module', async () => {
-      const guardFn = jest.fn();
+      const guardFn = vi.fn();
       const target = ghii(
         Type.Object({
           a: Type.Union([
@@ -497,7 +500,8 @@ describe('Ghii Config', () => {
       }
     });
     it('await on absolute module', async () => {
-      const guardFn = jest.fn();
+      const __dirname = path.dirname(fileURLToPath(import.meta.url));
+      const guardFn = vi.fn();
       const target = ghii(
         Type.Object({
           a: Type.Union(
