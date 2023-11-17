@@ -26,6 +26,7 @@ export type GhiiInstance<O extends TSchema> = {
   ) => Promise<Snapshot<O>>;
   on: ValueOf<Pick<GhiiEmitter<O>, 'on'>>;
   once: ValueOf<Pick<GhiiEmitter<O>, 'once'>>;
+  jsonSchema: () => string;
 };
 export type Snapshot<O extends TSchema> = Static<O>;
 export type SnapshotVersion<O extends TSchema> = { meta: { timestamp: Date }; value: Snapshot<O> };
@@ -168,6 +169,9 @@ export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) 
     waitForFirstSnapshot,
     on: events.on.bind(events),
     once: events.once.bind(events),
+    jsonSchema() {
+      return JSON.stringify(Type.Strict(schema));
+    },
   };
 }
 

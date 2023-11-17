@@ -171,6 +171,18 @@ describe('Ghii Config', () => {
     return expect(target.takeSnapshot()).rejects.toMatchObject([{ instancePath: '' }]);
   });
 
+  it('return a valid jsonSchema for a configuration ', () => {
+    const schema = Type.Object({
+      foo: Type.Object({
+        prop: Type.String({ maxLength: 7, minLength: 7, default: 'ghenghi' }),
+      }),
+    });
+
+    const target = ghii(schema);
+    return expect(target.jsonSchema()).toEqual(
+      '{"type":"object","properties":{"foo":{"type":"object","properties":{"prop":{"maxLength":7,"minLength":7,"default":"ghenghi","type":"string"}},"required":["prop"]}},"required":["foo"]}'
+    );
+  });
   describe('history and version', () => {
     it('have empty history and latestVersion if no snapshot is taken', () => {
       const target = ghii(
