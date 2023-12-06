@@ -2,7 +2,7 @@ import { Static, TSchema, Type } from '@sinclair/typebox';
 import { Edit, Value } from '@sinclair/typebox/value';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { EventEmitter } from 'events';
+import { EventEmitter, on } from 'events';
 import { cloneDeep, isEqual, merge } from 'lodash';
 import path from 'path';
 import { ValueOf } from 'type-fest';
@@ -17,7 +17,11 @@ export type GhiiInstance<O extends TSchema> = {
   snapshot: (newSnapshot?: Snapshot<O>) => Snapshot<O>;
   latestVersion: () => SnapshotVersion<O> | undefined;
   waitForFirstSnapshot: (
-    options?: { timeout?: number; onTimeout?: () => void },
+    options?: {
+      timeout?: number;
+      onTimeout?: () => void;
+      onFirstSnapshot?: (firstSnapshot: Snapshot<O>) => Promise<void>;
+    },
     ...moduleToLoad: string[]
   ) => Promise<Snapshot<O>>;
   on: ValueOf<Pick<GhiiEmitter<O>, 'on'>>;
@@ -111,22 +115,39 @@ export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) 
     }
   }
 
-  function waitForFirstSnapshot(options?: { timeout?: number; onTimeout?: () => void }, ...moduleToLoad: string[]) {
-    const { timeout = 30000, onTimeout } = options || {};
+  function waitForFirstSnapshot(
+    options?: {
+      timeout?: number;
+      onTimeout?: () => void;
+      onFirstSnapshot?: (firstSnapshot: Snapshot<O>) => Promise<void>;
+    },
+    ...moduleToLoad: string[]
+  ) {
+    const { timeout = 30000, onTimeout, onFirstSnapshot } = options || {};
 
     return new Promise<Snapshot<O>>((resolve, reject) => {
       if (latestVersion()) {
-        _tryImport(
-          moduleToLoad,
-          () => {
-            resolve(snapshot());
-          },
-          reject
-        );
+        if (onFirstSnapshot !== undefined) {
+          onFirstSnapshot(snapshot());
+          resolve(snapshot());
+        } else if (moduleToLoad.length) {
+          _tryImport(
+            moduleToLoad,
+            () => {
+              resolve(snapshot());
+            },
+            reject
+          );
+        }
         return;
       }
-      takeSnapshot().then(snapshot => {
-        _tryImport(moduleToLoad, () => resolve(snapshot), reject);
+      takeSnapshot().then(async snapshot => {
+        if (onFirstSnapshot !== undefined) {
+          onFirstSnapshot(snapshot);
+          resolve(snapshot);
+        } else if (moduleToLoad.length) {
+          _tryImport(moduleToLoad, () => resolve(snapshot), reject);
+        }
       }, reject);
 
       if (timeout > 0)
