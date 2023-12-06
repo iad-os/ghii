@@ -2,7 +2,7 @@ import { Static, TSchema, Type } from '@sinclair/typebox';
 import { Edit, Value } from '@sinclair/typebox/value';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { EventEmitter, on } from 'events';
+import { EventEmitter } from 'events';
 import { cloneDeep, isEqual, merge } from 'lodash';
 import path from 'path';
 import { ValueOf } from 'type-fest';
