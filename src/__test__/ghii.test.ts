@@ -416,8 +416,8 @@ describe('Ghii Config', () => {
       const target = ghii(
         Type.Object({
           a: Type.Object({
-              test: Type.Optional(Type.Union([Type.Literal('string')])),
-            }),
+            test: Type.Optional(Type.Union([Type.Literal('string')])),
+          }),
         })
       ).loader(() => fakeTimeoutLoader({}, 30));
       try {
