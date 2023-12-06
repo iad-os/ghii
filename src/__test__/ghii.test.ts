@@ -176,7 +176,7 @@ describe('Ghii Config', () => {
               Type.Object({
                 test: Type.Union([Type.Literal('defaults'), Type.Literal('string')]),
               }),
-              Type.Undefined(),
+              Type.Boolean(),
             ],
             { default: { test: 'defaults' } }
           ),
@@ -195,7 +195,7 @@ describe('Ghii Config', () => {
             Type.Object({
               test: Type.Optional(Type.Union([Type.Literal('string')])),
             }),
-            Type.Undefined(),
+            Type.Null(),
           ]),
         })
       );
@@ -211,7 +211,7 @@ describe('Ghii Config', () => {
             Type.Object({
               test: Type.Optional(Type.Union([Type.Literal('string'), Type.Literal('done')])),
             }),
-            Type.Undefined(),
+            Type.Any(),
           ]),
         })
       ).loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
@@ -229,7 +229,7 @@ describe('Ghii Config', () => {
             Type.Object({
               test: Type.Optional(Type.Union([Type.Literal('string'), Type.Literal('done')])),
             }),
-            Type.Undefined(),
+            Type.Null(),
           ]),
         })
       ).loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
@@ -247,7 +247,7 @@ describe('Ghii Config', () => {
             Type.Object({
               test: Type.Optional(Type.Union([Type.Literal('string'), Type.Literal('done')])),
             }),
-            Type.Undefined(),
+            Type.Boolean(),
           ]),
         })
       ).loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
@@ -270,7 +270,7 @@ describe('Ghii Config', () => {
             Type.Object({
               test: Type.Optional(Type.Union([Type.Literal('string'), Type.Literal('done')])),
             }),
-            Type.Undefined(),
+            Type.Array(Type.Integer()),
           ]),
         })
       ).loader(() => fakeTimeoutLoader({ a: { test: 'done' } }, 10));
@@ -288,7 +288,7 @@ describe('Ghii Config', () => {
             Type.Object({
               test: Type.Optional(Type.Union([Type.Literal('string')])),
             }),
-            Type.Undefined(),
+            Type.Number(),
           ]),
         })
       );
@@ -312,7 +312,7 @@ describe('Ghii Config', () => {
             Type.Object({
               test: Type.Optional(Type.Union([Type.Literal('string'), Type.Literal('defaults')])),
             }),
-            Type.Undefined(),
+            Type.Literal('tests'),
           ]),
         })
       );
@@ -415,12 +415,9 @@ describe('Ghii Config', () => {
     it('slow loader time out await snapshot', async () => {
       const target = ghii(
         Type.Object({
-          a: Type.Union([
-            Type.Object({
+          a: Type.Object({
               test: Type.Optional(Type.Union([Type.Literal('string')])),
             }),
-            Type.Undefined(),
-          ]),
         })
       ).loader(() => fakeTimeoutLoader({}, 30));
       try {
@@ -441,7 +438,7 @@ describe('Ghii Config', () => {
             Type.Object({
               test: Type.Optional(Type.Union([Type.Literal('string')])),
             }),
-            Type.Undefined(),
+            Type.Boolean(),
           ]),
         })
       ).loader(async () => {
@@ -462,7 +459,7 @@ describe('Ghii Config', () => {
             Type.Object({
               test: Type.Optional(Type.Union([Type.Literal('string')])),
             }),
-            Type.Undefined(),
+            Type.Null(),
           ]),
         })
       ).loader(() => fakeTimeoutLoader({ a: { test: 'string' } }, 30));
@@ -484,7 +481,7 @@ describe('Ghii Config', () => {
             Type.Object({
               test: Type.Optional(Type.Union([Type.Literal('string')])),
             }),
-            Type.Undefined(),
+            Type.String(),
           ]),
         })
       );
@@ -505,7 +502,7 @@ describe('Ghii Config', () => {
               Type.Object({
                 test: Type.Optional(Type.Union([Type.Literal('string')])),
               }),
-              Type.Undefined(),
+              Type.Null(),
             ],
             { default: { test: 'string' } }
           ),
