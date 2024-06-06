@@ -1,6 +1,9 @@
 {
   "include": ["src/**/*"],
-  "exclude": ["src/__test__/**/*.test.ts"],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/__test__/**/*.ts"
+  ],
   "compilerOptions": {
     "types": ["vitest/globals"],
     /* Visit https://aka.ms/tsconfig.json to read more about this file */

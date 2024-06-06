@@ -2,7 +2,7 @@ import { Type } from '@sinclair/typebox';
 import { fail } from 'node:assert';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fakeTimeoutLoader } from '../fakeLoaders.js';
+import { fakeTimeoutLoader } from './fakeLoaders.js';
 import Ghii, { ghii } from '../ghii.js';
 import { describe, beforeEach, vi, it, expect } from 'vitest';
 
