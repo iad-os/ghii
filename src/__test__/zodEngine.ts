@@ -1,8 +1,9 @@
 import * as z from 'zod/v4';
+import type { GhiiEngine } from '../ghii';
 
 export function zodEngine<ZodConfig extends z.ZodType, Config = z.infer<ZodConfig>>(
   makeSchema: (zod: typeof z) => ZodConfig
-) {
+): GhiiEngine<Config> {
   const schema = makeSchema(z);
   return {
     validate: (toValidate: Config) => {
@@ -23,8 +24,9 @@ export function zodEngine<ZodConfig extends z.ZodType, Config = z.infer<ZodConfi
         } as const;
       }
     },
-    toSchema: () => {
-      return z.toJSONSchema(schema);
+
+    toJsonSchema: (pretty = false) => {
+      return JSON.stringify(z.toJSONSchema(schema), null, pretty ? 2 : undefined);
     },
   };
 }

@@ -1,6 +1,6 @@
 {
   "name": "@ghii/ghii-v2",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A Funny configuration manager",
   "maintainers": [
     {
@@ -24,7 +24,7 @@
   "keywords": ["node", "config"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/iad-os/ghii.git"
+    "url": "git+https://github.com/iad-os/ghii.git"
   },
   "license": "MIT",
   "engines": {

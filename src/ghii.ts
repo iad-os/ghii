@@ -41,7 +41,7 @@ export type GhiiEngine<Config> = {
   validate(
     toValidate: NoInfer<Config>
   ): { success: false; errors: GhiiValidationError[] } | { success: true; value: Config };
-  toSchema(): object;
+  toJsonSchema(pretty?: boolean): string;
 };
 
 export function ghii<Config>(ghiiEngine: GhiiEngine<Config>): {
@@ -144,7 +144,7 @@ export function ghii<Config>(ghiiEngine: GhiiEngine<Config>): {
     on: events.on.bind(events),
     once: events.once.bind(events),
     jsonSchema() {
-      return JSON.stringify(ghiiEngine.toSchema());
+      return ghiiEngine.toJsonSchema();
     },
   };
 }
