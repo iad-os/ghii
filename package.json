@@ -34,8 +34,8 @@
     "access": "public"
   },
   "scripts": {
-    "lint": "biome check --write",
-    "format": "biome format --write",
+    "lint": "biome check --write --no-errors-on-unmatched --json-formatter-enabled=true",
+    "format": "biome format --write --no-errors-on-unmatched --json-formatter-enabled=true",
     "prebuild": "rimraf build",
     "build": "tsc",
     "test": "vitest run",
