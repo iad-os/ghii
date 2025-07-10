@@ -1,64 +1,68 @@
-import { Static, TSchema, Type } from '@sinclair/typebox';
-import { Edit, Value } from '@sinclair/typebox/value';
-import Ajv from 'ajv';
-import addFormats from 'ajv-formats';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
+import { isDeepStrictEqual } from 'node:util';
 import cloneDeep from 'lodash.clonedeep';
-import isEqual from 'lodash.isequal';
 import merge from 'lodash.merge';
-import path from 'node:path';
-import { ValueOf } from 'type-fest';
-import type TypedEventEmitter from './TypedEventEmitter';
+import type { ValueOf } from 'type-fest';
+import type TypedEventEmitter from './TypedEventEmitter.js';
 
-export type Loader = () => Promise<{ [key: string]: unknown }>;
+export type Loader = () => Promise<{ [key: string]: unknown }> | { [key: string]: unknown };
 
-export type GhiiInstance<O extends TSchema> = {
-  loader: (this: GhiiInstance<O>, loader: Loader) => GhiiInstance<O>;
-  takeSnapshot: () => Promise<Snapshot<O>>;
-  history: () => SnapshotVersion<O>[];
-  snapshot: (newSnapshot?: Snapshot<O>) => Snapshot<O>;
-  latestVersion: () => SnapshotVersion<O> | undefined;
-  waitForFirstSnapshot: (
-    options?: {
-      timeout?: number;
-      onTimeout?: () => void;
-      onFirstSnapshot?: (firstSnapshot: Snapshot<O>) => Promise<void>;
-    },
-    ...moduleToLoad: string[]
-  ) => Promise<Snapshot<O>>;
-  on: ValueOf<Pick<GhiiEmitter<O>, 'on'>>;
-  once: ValueOf<Pick<GhiiEmitter<O>, 'once'>>;
-  jsonSchema: () => string;
-};
-export type Snapshot<O extends TSchema> = Static<O>;
-export type SnapshotVersion<O extends TSchema> = { meta: { timestamp: Date }; value: Snapshot<O> };
-
-export interface EventTypes<O extends TSchema> {
-  'ghii:version:first': undefined;
-  'ghii:version:new': { value: SnapshotVersion<O>; diff: Edit[] };
+export interface EventTypes<Config> {
+  'ghii:first': undefined;
+  'ghii:refresh': GhiiActiveConfig<Config>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface GhiiEmitter<O extends TSchema> extends TypedEventEmitter<EventTypes<O>> {}
+export type GhiiValidationError<RAW_Error = unknown> = {
+  path: string;
+  input: unknown;
+  details: unknown;
+  message: string;
+  _raw: RAW_Error;
+};
+export type GhiiActiveConfig<Config> =
+  | {
+      version: 0;
+      config: undefined;
+      previousConfig: undefined;
+    }
+  | {
+      version: 1;
+      config: Config;
+      previousConfig: undefined;
+    }
+  | {
+      config: Config;
+      version: number;
+      previousConfig: Config;
+    };
+export interface GhiiEmitter<Config> extends TypedEventEmitter<EventTypes<Config>> {}
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) | O): GhiiInstance<O> {
-  const schema = typeof buildSchema === 'function' ? buildSchema(Type) : buildSchema;
+export type GhiiEngine<Config> = {
+  validate(
+    toValidate: NoInfer<Config>
+  ): { success: false; errors: GhiiValidationError[] } | { success: true; value: Config };
+  toSchema(): object;
+};
 
-  const ajv = createAjv();
-  const validator = createValidator(schema);
-
+export function ghii<Config>(ghiiEngine: GhiiEngine<Config>): {
+  loader: (this: ReturnType<typeof ghii<Config>>, loader: Loader) => ReturnType<typeof ghii<Config>>;
+  takeSnapshot: () => Promise<NoInfer<Config>>;
+  snapshot: () => Config;
+  waitForSnapshot: (options?: {
+    timeout?: number;
+    onTimeout?: () => void;
+    onValidSnapshot?: (firstSnapshot: Config) => Promise<void>;
+  }) => Promise<Config>;
+  on: ValueOf<Pick<GhiiEmitter<Config>, 'on'>>;
+  once: ValueOf<Pick<GhiiEmitter<Config>, 'once'>>;
+  jsonSchema: () => string;
+} {
   const loaders: Loader[] = [];
-  const versions: SnapshotVersion<O>[] = [];
 
-  const events = new EventEmitter() as unknown as GhiiEmitter<O>;
+  const _activeConfig: GhiiActiveConfig<Config> = { version: 0, config: undefined, previousConfig: undefined };
 
-  function createValidator(schema: O) {
-    const v = ajv.compile<O>(schema);
-    return (tested: unknown) => [v(tested), v.errors] as const;
-  }
-
-  function loader(this: GhiiInstance<O>, loader: Loader) {
+  const events = new EventEmitter() as unknown as GhiiEmitter<Config>;
+  function addLoader(this: ReturnType<typeof ghii<Config>>, loader: Loader): ReturnType<typeof ghii<Config>> {
     loaders.push(loader);
     return this;
   }
@@ -67,141 +71,80 @@ export function ghii<O extends TSchema>(buildSchema: ((type: typeof Type) => O) 
     return Promise.all(loaders.map(loader => loader()));
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function validate(result: Snapshot<O>) {
-    const [isValid, errors] = validator(result);
-    if (!isValid) {
-      return errors;
-    }
-    return undefined;
-  }
-
-  async function takeSnapshot(): Promise<Snapshot<O>> {
+  async function takeSnapshot(): Promise<Config> {
     const loaded = await runLoaders(loaders);
 
-    const result: Snapshot<O> = merge({}, ...loaded);
+    const result: Config = merge({}, ...loaded);
 
-    const validationErrors = validate(result);
-    if (validationErrors) throw validationErrors;
-
-    snapshot(result);
-
-    return result;
+    return await _updateSnapshot(result);
   }
 
-  function history() {
-    return cloneDeep(versions);
-  }
-
-  function latestVersion() {
-    if (versions.length === 0) return;
-    return cloneDeep(versions[versions.length - 1]);
-  }
-
-  function snapshot(newSnapshot?: Snapshot<O>) {
-    const currentSnapshot = latestVersion()?.value;
-    if (newSnapshot && (!currentSnapshot || !isEqual(currentSnapshot, newSnapshot))) {
-      versions.push({ meta: { timestamp: new Date() }, value: newSnapshot });
-      if (versions.length === 1) events.emit('ghii:version:first', undefined);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const lastVersion = latestVersion()!;
-      const diff = currentSnapshot ? Value.Diff(currentSnapshot, lastVersion.value) : [];
-      events.emit('ghii:version:new', { value: lastVersion, diff });
-    }
-    if (currentSnapshot) {
-      return currentSnapshot;
-    } else if (!newSnapshot) {
-      // take default if valid
-      const defaults: Snapshot<O> = {};
-      validate(defaults);
-      return defaults;
+  function snapshot() {
+    if (!_activeConfig.version || !_activeConfig.config) {
+      throw new Error('No snapshot found, call takeSnapshot first or waitForSnapshot'); // take default if valid
+    } else {
+      return _activeConfig.config;
     }
   }
+  async function _updateSnapshot(newSnapshot: Config): Promise<Config> {
+    const result = await ghiiEngine.validate(newSnapshot);
+    if (!result.success) throw result.errors;
 
-  function waitForFirstSnapshot(
-    options?: {
-      timeout?: number;
-      onTimeout?: () => void;
-      onFirstSnapshot?: (firstSnapshot: Snapshot<O>) => Promise<void>;
-    },
-    ...moduleToLoad: string[]
-  ) {
-    const { timeout = 30000, onTimeout, onFirstSnapshot } = options || {};
+    if (_activeConfig.config && isDeepStrictEqual(_activeConfig.config, result.value)) {
+      return result.value;
+    }
 
-    return new Promise<Snapshot<O>>((resolve, reject) => {
-      if (latestVersion()) {
-        if (onFirstSnapshot !== undefined) {
-          onFirstSnapshot(snapshot());
-          resolve(snapshot());
-        } else if (moduleToLoad.length) {
-          _tryImport(
-            moduleToLoad,
-            () => {
-              resolve(snapshot());
-            },
-            reject
-          );
+    _activeConfig.version = _activeConfig.version + 1;
+    if (_activeConfig.version === 1) {
+      events.emit('ghii:first', undefined);
+    }
+    _activeConfig.previousConfig = _activeConfig.config;
+    _activeConfig.config = result.value;
+    events.emit('ghii:refresh', cloneDeep(_activeConfig) as GhiiActiveConfig<Config>);
+    return result.value;
+  }
+
+  function waitForSnapshot(options?: {
+    timeout?: number;
+    onTimeout?: () => void;
+    onValidSnapshot?: (firstSnapshot: Config) => Promise<void>;
+  }) {
+    const { timeout = 30000, onTimeout, onValidSnapshot } = options || {};
+
+    return new Promise<Config>((resolve, reject) => {
+      if (_activeConfig.version) {
+        if (_activeConfig.version > 0 && onValidSnapshot !== undefined) {
+          onValidSnapshot(snapshot());
         }
+        resolve(snapshot());
         return;
       }
       takeSnapshot().then(async snapshot => {
-        if (onFirstSnapshot !== undefined) {
-          onFirstSnapshot(snapshot);
-          resolve(snapshot);
-        } else if (moduleToLoad.length) {
-          _tryImport(moduleToLoad, () => resolve(snapshot), reject);
+        if (onValidSnapshot !== undefined) {
+          onValidSnapshot(snapshot);
         }
+        resolve(snapshot);
       }, reject);
 
       if (timeout > 0)
         setTimeout(() => {
-          events.removeAllListeners('ghii:version:first');
+          events.removeAllListeners('ghii:first');
+          events.removeAllListeners('ghii:refresh');
           if (onTimeout) onTimeout();
-          reject({ reason: new Error('timeout') });
+          reject({ reason: new Error('timeout waiting for snapshot') });
         }, timeout);
     });
   }
 
   return {
-    loader,
+    loader: addLoader,
     takeSnapshot,
-    history,
-    latestVersion,
     snapshot,
-    waitForFirstSnapshot,
+    waitForSnapshot,
     on: events.on.bind(events),
     once: events.once.bind(events),
     jsonSchema() {
-      return JSON.stringify(Type.Strict(schema));
+      return JSON.stringify(ghiiEngine.toSchema());
     },
   };
-}
-
-export default ghii;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function _tryImport(moduleToLoad: string[], resolve: (value?: void) => void, reject: (reason?: any) => void) {
-  import(path.join(...moduleToLoad))
-    .then(module => {
-      resolve(module);
-    })
-    .catch(reason => reject(reason));
-}
-
-function createAjv() {
-  return addFormats(new Ajv({ useDefaults: true }), [
-    'date-time',
-    'time',
-    'date',
-    'email',
-    'hostname',
-    'ipv4',
-    'ipv6',
-    'uri',
-    'uri-reference',
-    'uuid',
-    'uri-template',
-    'json-pointer',
-    'relative-json-pointer',
-    'regex',
-  ]).addKeyword({ type: 'null', keyword: 'typeOf' });
 }
