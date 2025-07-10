@@ -1,14 +1,7 @@
 {
-  "include": [
-    "src/**/*"
-  ],
-  "extends": [
-    "@tsconfig/node22/tsconfig.json",
-    "@tsconfig/strictest/tsconfig.json"
-  ],
-  "exclude": [
-    "src/__test__/**/*.ts"
-  ],
+  "include": ["src/**/*"],
+  "extends": ["@tsconfig/node22/tsconfig.json", "@tsconfig/strictest/tsconfig.json"],
+  "exclude": ["src/__test__/**/*.ts"],
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig.json to read more about this file */
     /* Projects */

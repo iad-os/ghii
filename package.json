@@ -20,13 +20,8 @@
   "type": "module",
   "main": "build/lib/ghii.js",
   "types": "build/types/ghii.d.ts",
-  "files": [
-    "build/**"
-  ],
-  "keywords": [
-    "node",
-    "config"
-  ],
+  "files": ["build/**"],
+  "keywords": ["node", "config"],
   "repository": {
     "type": "git",
     "url": "https://github.com/iad-os/ghii.git"

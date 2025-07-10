@@ -142,13 +142,15 @@ const appConfig = ghii({
       version: z.string().default('1.0.0'),
       debug: z.boolean().default(false),
     });
-    
+
     const result = schema.safeParse(config);
-    return result.success 
+    return result.success
       ? { success: true, value: result.data }
       : { success: false, errors: result.error.issues.map(/* ... */) };
   },
-  toSchema: () => ({ /* schema */ }),
+  toSchema: () => ({
+    /* schema */
+  }),
 });
 
 // Load configuration
@@ -168,6 +170,7 @@ The configuration engine is responsible for validating configuration data. It mu
 ### Loaders
 
 Loaders are functions that return configuration data. They can be:
+
 - Synchronous or asynchronous
 - Load from files, environment variables, APIs, etc.
 - Combined to merge multiple configuration sources
@@ -183,6 +186,7 @@ All configuration data is validated before being used. Invalid configuration thr
 ### Events
 
 GHII emits events when configuration changes:
+
 - `ghii:first`: Emitted when the first valid configuration is loaded
 - `ghii:refresh`: Emitted when configuration is updated
 
@@ -193,6 +197,7 @@ GHII emits events when configuration changes:
 Creates a new GHII instance with the specified validation engine.
 
 **Parameters:**
+
 - `engine`: A validation engine object with `validate` and `toSchema` methods
 
 **Returns:** A GHII instance with the following methods:
@@ -202,6 +207,7 @@ Creates a new GHII instance with the specified validation engine.
 Adds a configuration loader.
 
 **Parameters:**
+
 - `loaderFunction`: A function that returns configuration data (sync or async)
 
 **Returns:** The GHII instance for chaining
@@ -223,6 +229,7 @@ Returns the current configuration snapshot without reloading.
 Waits for a valid configuration snapshot.
 
 **Parameters:**
+
 - `options.timeout`: Timeout in milliseconds (default: 30000)
 - `options.onTimeout`: Callback when timeout occurs
 - `options.onValidSnapshot`: Callback when valid snapshot is available
@@ -234,6 +241,7 @@ Waits for a valid configuration snapshot.
 Registers an event listener.
 
 **Events:**
+
 - `'ghii:first'`: Emitted on first valid configuration
 - `'ghii:refresh'`: Emitted when configuration changes
 
@@ -254,7 +262,7 @@ import { ghii } from '@ghii/ghii-v2';
 import { z } from 'zod';
 
 const config = ghii({
-  validate: (data) => {
+  validate: data => {
     const schema = z.object({
       app: z.object({
         name: z.string(),
@@ -262,13 +270,14 @@ const config = ghii({
       }),
     });
     const result = schema.safeParse(data);
-    return result.success 
+    return result.success
       ? { success: true, value: result.data }
       : { success: false, errors: result.error.issues.map(/* ... */) };
   },
-  toSchema: () => ({ /* schema */ }),
-})
-.loader(() => ({
+  toSchema: () => ({
+    /* schema */
+  }),
+}).loader(() => ({
   app: {
     name: 'my-app',
     version: '1.0.0',
@@ -281,17 +290,16 @@ const snapshot = await config.takeSnapshot();
 ### Environment-based Configuration
 
 ```typescript
-const config = ghii(engine)
-  .loader(() => ({
-    database: {
-      url: process.env.DATABASE_URL,
-      poolSize: parseInt(process.env.DB_POOL_SIZE || '10'),
-    },
-    server: {
-      port: parseInt(process.env.PORT || '3000'),
-      host: process.env.HOST || 'localhost',
-    },
-  }));
+const config = ghii(engine).loader(() => ({
+  database: {
+    url: process.env.DATABASE_URL,
+    poolSize: parseInt(process.env.DB_POOL_SIZE || '10'),
+  },
+  server: {
+    port: parseInt(process.env.PORT || '3000'),
+    host: process.env.HOST || 'localhost',
+  },
+}));
 ```
 
 ### File-based Configuration
@@ -300,12 +308,11 @@ const config = ghii(engine)
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-const config = ghii(engine)
-  .loader(() => {
-    const configPath = join(process.cwd(), 'config.json');
-    const configData = JSON.parse(readFileSync(configPath, 'utf8'));
-    return configData;
-  });
+const config = ghii(engine).loader(() => {
+  const configPath = join(process.cwd(), 'config.json');
+  const configData = JSON.parse(readFileSync(configPath, 'utf8'));
+  return configData;
+});
 ```
 
 ### Multiple Loaders
@@ -332,32 +339,38 @@ const config = ghii(engine)
 
 ```typescript
 const config = ghii({
-  validate: (data) => {
+  validate: data => {
     // Custom validation logic
     if (!data.apiKey || data.apiKey.length < 10) {
       return {
         success: false,
-        errors: [{
-          path: 'apiKey',
-          input: data.apiKey,
-          details: 'invalid_length',
-          message: 'API key must be at least 10 characters',
-          _raw: null,
-        }],
+        errors: [
+          {
+            path: 'apiKey',
+            input: data.apiKey,
+            details: 'invalid_length',
+            message: 'API key must be at least 10 characters',
+            _raw: null,
+          },
+        ],
       };
     }
-    
+
     return { success: true, value: data };
   },
-  toSchema: () => ({ type: 'object', properties: { /* ... */ } }),
+  toSchema: () => ({
+    type: 'object',
+    properties: {
+      /* ... */
+    },
+  }),
 });
 ```
 
 ### Event Handling
 
 ```typescript
-const config = ghii(engine)
-  .loader(/* ... */);
+const config = ghii(engine).loader(/* ... */);
 
 // Listen for first configuration
 config.once('ghii:first', () => {
@@ -365,7 +378,7 @@ config.once('ghii:first', () => {
 });
 
 // Listen for configuration changes
-config.on('ghii:refresh', (activeConfig) => {
+config.on('ghii:refresh', activeConfig => {
   console.log('Configuration updated:', {
     version: activeConfig.version,
     config: activeConfig.config,
@@ -491,6 +504,7 @@ const config = ghii<AppConfig>(engine);
 ### Common Issues
 
 **"No snapshot found" Error**
+
 ```typescript
 // ❌ Wrong
 const config = config.snapshot();
@@ -502,6 +516,7 @@ const config = config.snapshot(); // after takeSnapshot() has been called
 ```
 
 **Validation Errors**
+
 ```typescript
 // Check your schema and input data
 try {
@@ -512,6 +527,7 @@ try {
 ```
 
 **Loader Errors**
+
 ```typescript
 // Ensure loaders return valid data
 .loader(async () => {
@@ -534,6 +550,7 @@ try {
 ### Error Messages
 
 GHII provides detailed error messages with:
+
 - Path to the problematic value
 - Input that caused the error
 - Validation details
@@ -567,6 +584,7 @@ npm run test:ui
 ### Code Style
 
 The project uses:
+
 - **Biome** for linting and formatting
 - **TypeScript** for type safety
 - **Vitest** for testing

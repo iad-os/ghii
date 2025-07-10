@@ -7,34 +7,21 @@ on:
       - esm
       - next
 jobs:
-  build:
+  build-and-publish:
+    name: build-and-publish
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - name: 'Setup node'
-        uses: actions/setup-node@v2
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Biome
+        uses: biomejs/setup-biome@v2
         with:
-          node-version: 22
-
-      - name: 'install deps'
-        run: npm ci --no-audit
-      - name: 'lint'
-        run: npx @biomejs/biome check --write
-      - name: 'tests'
-        run: npm test
-      - name: build
-        run: npm run build --if-present
-        env:
-          CI: true
-  publish:
-    name: publish
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
+          version: latest
+      - name: Run Biome
+        run: biome ci .
       - name: 'Setup node'
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
@@ -42,7 +29,6 @@ jobs:
       - name: install deps, tests and build
         run: |
           npm ci --no-audit
-          npx @biomejs/biome check --write
           npm run test
           npm run build --if-present
         env:
