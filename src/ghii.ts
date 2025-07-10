@@ -38,15 +38,13 @@ export type GhiiActiveConfig<Config> =
 export interface GhiiEmitter<Config> extends TypedEventEmitter<EventTypes<Config>> {}
 
 export type GhiiEngine<Config> = {
-  validate(
-    toValidate: NoInfer<Config>
-  ): { success: false; errors: GhiiValidationError[] } | { success: true; value: Config };
+  validate(toValidate: Config): { success: false; errors: GhiiValidationError[] } | { success: true; value: Config };
   toJsonSchema(pretty?: boolean): string;
 };
 
 export function ghii<Config>(ghiiEngine: GhiiEngine<Config>): {
   loader: (this: ReturnType<typeof ghii<Config>>, loader: Loader) => ReturnType<typeof ghii<Config>>;
-  takeSnapshot: () => Promise<NoInfer<Config>>;
+  takeSnapshot: () => Promise<Config>;
   snapshot: () => Config;
   waitForSnapshot: (options?: {
     timeout?: number;
