@@ -1,0 +1,15 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: lint and format staged files
+      run: npm run lint {staged_files}
+      glob: "*.{js,ts,jsx,tsx,json,yml,yaml,md}"
+
+    - name: format staged files
+      run: npm run format {staged_files}
+      glob: "*.{js,ts,jsx,tsx,json,yml,yaml,md}"
+
+pre-push:
+  jobs:
+    - name: run tests
+      run: npm test
