@@ -314,7 +314,7 @@ describe('Ghii Config', () => {
       )
     );
     return expect(target.jsonSchema()).toMatchInlineSnapshot(
-
-    `"{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"foo":{"type":"object","properties":{"prop":{"default":"ghenghi","description":"a nice property","title":"A nice property","examples":["ghenghi","ghenghi2"],"type":"string","minLength":7,"maxLength":7}},"required":["prop"],"additionalProperties":false}},"required":["foo"],"additionalProperties":false}"`);
+      `"{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","properties":{"foo":{"type":"object","properties":{"prop":{"default":"ghenghi","description":"a nice property","title":"A nice property","examples":["ghenghi","ghenghi2"],"type":"string","minLength":7,"maxLength":7}},"required":["prop"],"additionalProperties":false}},"required":["foo"],"additionalProperties":false}"`
+    );
   });
 });
