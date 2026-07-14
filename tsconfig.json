@@ -1,7 +1,14 @@
 {
-  "include": ["src/**/*"],
-  "extends": ["@tsconfig/node22/tsconfig.json", "@tsconfig/strictest/tsconfig.json"],
-  "exclude": ["src/__test__/**/*.ts"],
+  "include": [
+    "src/**/*"
+  ],
+  "extends": [
+    "@tsconfig/node22/tsconfig.json",
+    "@tsconfig/strictest/tsconfig.json"
+  ],
+  "exclude": [
+    "src/__test__/**/*.ts"
+  ],
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig.json to read more about this file */
     /* Projects */
@@ -24,6 +31,7 @@
     // "noLib": true,                                    /* Disable including any library files, including the default lib.d.ts. */
     // "useDefineForClassFields": true,                  /* Emit ECMAScript-standard-compliant class fields. */
     /* Modules */
+    "types": ["node"] /* TS7 (native compiler) does not auto-include node_modules/@types */,
     "module": "NodeNext",
     "moduleResolution": "NodeNext" /* Specify what module code is generated. */,
     "rootDir": "./src" /* Specify the root folder within your source files. */,
