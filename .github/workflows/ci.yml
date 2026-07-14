@@ -6,6 +6,9 @@ on:
       - main
       - esm
       - next
+permissions:
+  id-token: write # Required for OIDC
+  contents: read
 jobs:
   build-and-publish:
     name: build-and-publish
@@ -23,7 +26,7 @@ jobs:
       - name: "Setup node"
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org
 
       - name: install deps, tests and build

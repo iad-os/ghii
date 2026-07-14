@@ -20,20 +20,15 @@
   "type": "module",
   "main": "build/lib/ghii.js",
   "types": "build/types/ghii.d.ts",
-  "files": [
-    "build/**"
-  ],
-  "keywords": [
-    "node",
-    "config"
-  ],
+  "files": ["build/**"],
+  "keywords": ["node", "config"],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/iad-os/ghii.git"
   },
   "license": "MIT",
   "engines": {
-    "node": ">= 22"
+    "node": ">= 24"
   },
   "publishConfig": {
     "access": "public"
@@ -50,9 +45,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.3",
-    "@tsconfig/node22": "^22.0.5",
+    "@tsconfig/node24": "^24.0.1",
     "@tsconfig/strictest": "^2.0.8",
-    "@types/node": "^22.20.1",
+    "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^4.1.10",
     "@vitest/ui": "^4.1.10",
     "lefthook": "^2.1.10",
