@@ -1,6 +1,6 @@
 {
   "name": "@ghii/ghii-v2",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "description": "A Funny configuration manager",
   "maintainers": [
     {
@@ -44,20 +44,24 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.3",
-    "@tsconfig/node24": "^24.0.1",
-    "@tsconfig/strictest": "^2.0.8",
-    "@types/node": "^24.0.0",
-    "@vitest/coverage-v8": "^4.1.10",
-    "@vitest/ui": "^4.1.10",
-    "lefthook": "^2.1.10",
-    "rimraf": "^6.1.3",
-    "type-fest": "^5.8.0",
+    "@biomejs/biome": "2.6.8",
+    "@tsconfig/node24": "^24.0.6",
+    "@tsconfig/strictest": "^2.0.9",
+    "@types/node": "^24.19.2",
+    "@vitest/coverage-v8": "^5.1.1",
+    "@vitest/ui": "^5.1.1",
+    "lefthook": "^2.2.2",
+    "rimraf": "^6.1.4",
+    "type-fest": "^6.0.3",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10",
-    "zod": "^4.4.3"
+    "vitest": "^5.1.1",
+    "zod": "^4.6.7"
   },
   "dependencies": {
-    "es-toolkit": "^1.49.0"
+    "es-toolkit": "^1.53.2"
+  },
+  "allowScripts": {
+    "fsevents@2.3.3": true,
+    "lefthook@2.2.2": true
   }
 }
